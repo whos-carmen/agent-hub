@@ -5,34 +5,36 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>agent-hub</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config = {
-  darkMode: 'class',
-  theme: { extend: {} }
-}
-</script>
 <style>
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
 body { display: flex; background: #f0f2f5; color: #333; }
 /* Sidebar */
 #sidebar { width: 240px; min-width: 240px; background: #2b2d30; color: #ccc; display: flex; flex-direction: column; overflow: hidden; }
-#sidebar h2 { font-size: 13px; font-weight: 600; padding: 14px 16px 8px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; }
+#sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px 4px; }
+#sidebar-header h2 { font-size: 13px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin: 0; }
+#settings-gear { background: none; border: none; color: #666; cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 3px; }
+#settings-gear:hover { color: #ddd; background: #3a3c40; }
 #session-list { flex: 1; overflow-y: auto; padding: 4px 8px; }
 .session-item { padding: 8px 12px; cursor: pointer; border-radius: 4px; font-size: 13px; margin-bottom: 2px; display: flex; align-items: center; justify-content: space-between; color: #ddd; }
 .session-item:hover { background: #3a3c40; }
 .session-item.active { background: #4a6fa5; color: #fff; }
-.session-item .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
-.session-item .del { opacity: 0; cursor: pointer; padding: 2px 6px; font-size: 14px; color: #999; }
+.session-item .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; padding: 2px 4px; border-radius: 3px; }
+.session-item .name:hover { background: rgba(255,255,255,0.1); }
+.session-item.active .name:hover { background: rgba(255,255,255,0.2); }
+.session-item .name.editing { background: #fff; color: #333; outline: none; cursor: text; white-space: normal; overflow: visible; }
+.session-item .del { opacity: 0; cursor: pointer; padding: 2px 6px; font-size: 14px; color: #999; background: none; border: none; }
 .session-item:hover .del { opacity: 1; }
 .session-item .del:hover { color: #e66; }
 #new-session-btn { margin: 8px; padding: 6px; border: 1px dashed #555; border-radius: 4px; background: transparent; color: #999; cursor: pointer; font-size: 12px; text-align: center; }
 #new-session-btn:hover { border-color: #888; color: #ddd; }
 /* Main area */
 #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-#header { padding: 12px 24px; background: #fff; border-bottom: 1px solid #d1d5db; display: flex; align-items: center; gap: 16px; min-height: 48px; }
-#header h1 { font-size: 15px; font-weight: 600; color: #333; }
-.model-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: #10b981; }
+#header { padding: 12px 24px; background: #fff; border-bottom: 1px solid #d1d5db; display: flex; align-items: center; gap: 12px; min-height: 48px; flex-wrap: wrap; }
+#header h1 { font-size: 15px; font-weight: 600; color: #333; margin: 0; }
+#model-dots { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.model-indicator { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #666; }
+.model-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; flex-shrink: 0; }
 .model-dot.offline { background: #9ca3af; }
 #messages { flex: 1; overflow-y: auto; padding: 16px 24px; background: #fff; }
 .msg { margin-bottom: 16px; max-width: 800px; }
@@ -52,35 +54,43 @@ body { display: flex; background: #f0f2f5; color: #333; }
 .model-label .indicator.error { background: #ef4444; }
 #input-area { padding: 12px 24px 16px; background: #fff; border-top: 1px solid #d1d5db; }
 #input-form { display: flex; gap: 8px; }
-#input-box { flex: 1; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; transition: border-color 0.15s; }
+#input-box { flex: 1; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; }
 #input-box:focus { border-color: #4a6fa5; box-shadow: 0 0 0 2px rgba(74,111,165,0.15); }
-#input-form button { padding: 10px 20px; background: #4a6fa5; color: #fff; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; transition: background 0.15s; }
+#input-form button { padding: 10px 20px; background: #4a6fa5; color: #fff; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; }
 #input-form button:hover { background: #3b5d8a; }
 #input-form button:disabled { opacity: 0.5; cursor: default; }
 #send-btn:disabled { background: #9ca3af; }
-/* Dispatch cards */
-.dispatch-card { margin: 8px 0; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
-.dispatch-card .card-header { padding: 8px 12px; font-size: 12px; font-weight: 600; background: #f9fafb; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px; }
-.dispatch-card .card-body { padding: 8px 12px; font-size: 13px; }
-/* Status bar */
 #status-bar { display: flex; gap: 16px; font-size: 11px; color: #999; margin-top: 8px; }
 #status-bar .stat { display: flex; align-items: center; gap: 4px; }
-/* Notif banner */
 #sse-banner { position: fixed; top: 0; left: 0; right: 0; background: #f59e0b; color: #fff; text-align: center; font-size: 12px; padding: 4px; z-index: 100; }
-/* Auto-scroll anchor */
-#scroll-anchor { height: 1px; }
+/* Settings modal */
+#settings-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; align-items: center; justify-content: center; }
+#settings-overlay.open { display: flex; }
+#settings-panel { background: #fff; border-radius: 8px; width: 480px; max-width: 90vw; max-height: 80vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+#settings-panel h2 { margin: 0; padding: 16px 20px; font-size: 15px; font-weight: 600; border-bottom: 1px solid #e5e7eb; }
+#settings-panel .body { padding: 16px 20px; }
+#settings-panel .row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; border-bottom: 1px solid #f3f4f6; }
+#settings-panel .row:last-child { border-bottom: none; }
+#settings-panel .row .label { color: #666; }
+#settings-panel .row .value { color: #333; font-weight: 500; }
+#settings-panel .close { float: right; background: none; border: none; font-size: 20px; cursor: pointer; color: #999; padding: 0; line-height: 1; }
+#settings-panel .close:hover { color: #333; }
 </style>
 </head>
 <body>
 <div id="sidebar">
-  <h2>Chats</h2>
+  <div id="sidebar-header">
+    <h2>Chats</h2>
+    <button id="settings-gear" title="Settings">⚙</button>
+  </div>
   <div id="session-list"></div>
   <button id="new-session-btn">+ New Chat</button>
 </div>
+
 <div id="main">
   <div id="header">
     <h1>agent-hub</h1>
-    <span id="model-dots"></span>
+    <div id="model-dots"></div>
   </div>
   <div id="messages"></div>
   <div id="input-area">
@@ -95,6 +105,16 @@ body { display: flex; background: #f0f2f5; color: #333; }
   </div>
 </div>
 
+<div id="settings-overlay">
+  <div id="settings-panel">
+    <h2>Settings <button class="close" id="settings-close">×</button></h2>
+    <div class="body" id="settings-body">
+      <div class="row"><span class="label">Default model</span><span class="value" id="s-default-model">—</span></div>
+      <div class="row"><span class="label">Port</span><span class="value" id="s-port">—</span></div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ─── State ─────────────────────────────────────────────
 const messagesEl = document.getElementById('messages');
@@ -104,13 +124,16 @@ const sendBtn = document.getElementById('send-btn');
 const sessionList = document.getElementById('session-list');
 const newSessionBtn = document.getElementById('new-session-btn');
 const modelDots = document.getElementById('model-dots');
+const settingsGear = document.getElementById('settings-gear');
+const settingsOverlay = document.getElementById('settings-overlay');
+const settingsClose = document.getElementById('settings-close');
+const settingsBody = document.getElementById('settings-body');
 
 let sessions = [];
 let activeSessionId = null;
 let streamingModel = null;
 
 // ─── API helpers ────────────────────────────────────────
-
 function escapeHtml(t) { if (!t) return ''; const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
 function fetchJSON(url, opts) { return fetch(url, opts).then(r => r.ok ? r.json().catch(() => null) : null); }
@@ -156,8 +179,9 @@ function deleteSession(id) {
   fetch('/api/sessions/' + encodeURIComponent(id), { method: 'DELETE' }).then(() => loadSessionList());
 }
 
-function renameSession(id, name) {
-  fetch('/api/sessions/' + encodeURIComponent(id), { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) });
+function renameSession(id, name, cb) {
+  fetch('/api/sessions/' + encodeURIComponent(id), { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) })
+    .then(r => { if (cb) cb(r.ok); });
 }
 
 // ─── Render ─────────────────────────────────────────────
@@ -167,8 +191,54 @@ function renderSessionList() {
   sessions.forEach(s => {
     const div = document.createElement('div');
     div.className = 'session-item' + (s.id === activeSessionId ? ' active' : '');
-    div.innerHTML = `<span class="name">${escapeHtml(s.name)}</span><span class="del" data-id="${s.id}">×</span>`;
-    div.querySelector('.name').addEventListener('click', () => switchSession(s.id));
+    div.innerHTML = `<span class="name" data-id="${s.id}">${escapeHtml(s.name)}</span><button class="del" data-id="${s.id}">×</button>`;
+    
+    // Click to switch
+    const nameSpan = div.querySelector('.name');
+    nameSpan.addEventListener('click', () => {
+      if (nameSpan.contentEditable === 'true') return; // editing
+      switchSession(s.id);
+    });
+    
+    // Double-click to rename inline
+    nameSpan.addEventListener('dblclick', function(e) {
+      e.stopPropagation();
+      if (this.contentEditable === 'true') return;
+      this.contentEditable = 'true';
+      this.classList.add('editing');
+      this.focus();
+      // Select all text
+      const range = document.createRange();
+      range.selectNodeContents(this);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    });
+    
+    // Save on Enter or blur
+    nameSpan.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.blur();
+      }
+      if (e.key === 'Escape') {
+        this.textContent = sessions.find(se => se.id === s.id)?.name || this.textContent;
+        this.blur();
+      }
+    });
+    
+    nameSpan.addEventListener('blur', function() {
+      if (this.contentEditable !== 'true') return;
+      this.contentEditable = 'false';
+      this.classList.remove('editing');
+      const newName = this.textContent.trim();
+      if (newName && newName !== s.name) {
+        renameSession(s.id, newName);
+      } else {
+        this.textContent = s.name;
+      }
+    });
+
     div.querySelector('.del').addEventListener('click', e => { e.stopPropagation(); deleteSession(s.id); });
     sessionList.appendChild(div);
   });
@@ -198,7 +268,6 @@ function renderMessage(msg) {
       streamingModel = { el: div.querySelector('.bubble'), text: msg.content || '' };
     }
   }
-
   messagesEl.appendChild(div);
 }
 
@@ -218,15 +287,11 @@ function addStreamingChunk(modelName, chunk) {
     scrollToBottom();
     return;
   }
-  // Search for last streaming message for this model
   const streams = messagesEl.querySelectorAll('.msg.model.streaming');
   let found = null;
   for (const el of streams) {
     const label = el.querySelector('.model-label');
-    if (label && label.textContent.includes(modelName)) {
-      found = el;
-      break;
-    }
+    if (label && label.textContent.includes(modelName)) { found = el; break; }
   }
   if (found) {
     const bubble = found.querySelector('.bubble');
@@ -235,7 +300,6 @@ function addStreamingChunk(modelName, chunk) {
       bubble.innerHTML = renderContent(streamingModel.text);
     }
   } else {
-    // New streaming message
     const div = document.createElement('div');
     div.className = 'msg model streaming';
     div.innerHTML = `<div class="model-label"><span class="indicator active"></span>${escapeHtml(modelName)}</div><div class="bubble">${escapeHtml(chunk)}</div>`;
@@ -263,13 +327,9 @@ function updateStatusBar() {
   document.getElementById('stat-session').textContent = 'session: ' + (sessions.find(s => s.id === activeSessionId)?.name || '');
 }
 
-function scrollToBottom() {
-  const el = messagesEl;
-  el.scrollTop = el.scrollHeight;
-}
+function scrollToBottom() { messagesEl.scrollTop = messagesEl.scrollHeight; }
 
 // ─── SSE ────────────────────────────────────────────────
-
 const evtSource = new EventSource('/api/stream');
 evtSource.addEventListener('chunk', e => {
   const data = JSON.parse(e.data);
@@ -281,82 +341,72 @@ evtSource.addEventListener('done', e => {
 });
 evtSource.addEventListener('error', e => {
   const data = JSON.parse(e.data);
-  const div = document.createElement('div');
-  div.className = 'msg error';
+  const div = document.createElement('div'); div.className = 'msg error';
   div.innerHTML = `<div class="bubble">Error: ${escapeHtml(data.error || 'Unknown')}</div>`;
-  messagesEl.appendChild(div);
-  scrollToBottom();
+  messagesEl.appendChild(div); scrollToBottom();
 });
 evtSource.addEventListener('dispatch', e => {
   const data = JSON.parse(e.data);
-  const div = document.createElement('div');
-  div.className = 'msg system';
+  const div = document.createElement('div'); div.className = 'msg system';
   div.innerHTML = `<div class="bubble">${escapeHtml(data.text || '')}</div>`;
-  messagesEl.appendChild(div);
-  scrollToBottom();
+  messagesEl.appendChild(div); scrollToBottom();
 });
 evtSource.addEventListener('status', e => {
   const data = JSON.parse(e.data);
-  const div = document.createElement('div');
-  div.className = 'msg system';
+  const div = document.createElement('div'); div.className = 'msg system';
   div.innerHTML = `<div class="bubble">${escapeHtml(data.text || '')}</div>`;
-  messagesEl.appendChild(div);
-  scrollToBottom();
+  messagesEl.appendChild(div); scrollToBottom();
 });
-evtSource.addEventListener('session_switched', () => {
-  loadSessionList();
-});
+evtSource.addEventListener('session_switched', () => loadSessionList());
 evtSource.addEventListener('connected', () => {});
 evtSource.onerror = function() {
-  let banner = document.getElementById('sse-banner');
-  if (!banner) {
-    banner = document.createElement('div');
-    banner.id = 'sse-banner';
-    banner.textContent = 'Connection lost — reconnecting...';
-    document.body.prepend(banner);
-  }
+  let b = document.getElementById('sse-banner');
+  if (!b) { b = document.createElement('div'); b.id = 'sse-banner'; b.textContent = 'Connection lost — reconnecting...'; document.body.prepend(b); }
 };
 
 // ─── Input ──────────────────────────────────────────────
-
 inputForm.addEventListener('submit', e => {
   e.preventDefault();
   const content = inputBox.value.trim();
   if (!content || sendBtn.disabled) return;
   inputBox.value = '';
   sendBtn.disabled = true;
-
-  // Show user message
-  const div = document.createElement('div');
-  div.className = 'msg user';
+  const div = document.createElement('div'); div.className = 'msg user';
   div.innerHTML = `<div class="bubble">${escapeHtml(content)}</div>`;
-  messagesEl.appendChild(div);
-  scrollToBottom();
-
-  fetch('/api/send', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content }),
-  }).then(r => {
-    sendBtn.disabled = false;
-    inputBox.focus();
-    if (!r.ok) {
-      const errDiv = document.createElement('div');
-      errDiv.className = 'msg error';
-      errDiv.innerHTML = `<div class="bubble">Failed to send</div>`;
-      messagesEl.appendChild(errDiv);
-      scrollToBottom();
-    }
-  }).catch(() => { sendBtn.disabled = false; inputBox.focus(); });
+  messagesEl.appendChild(div); scrollToBottom();
+  fetch('/api/send', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({content}) })
+    .then(r => { sendBtn.disabled = false; inputBox.focus(); if (!r.ok) { const ed = document.createElement('div'); ed.className = 'msg error'; ed.innerHTML = '<div class="bubble">Failed to send</div>'; messagesEl.appendChild(ed); scrollToBottom(); }})
+    .catch(() => { sendBtn.disabled = false; inputBox.focus(); });
 });
 
-// ─── Init ───────────────────────────────────────────────
+// ─── Settings ────────────────────────────────────────────
+settingsGear.addEventListener('click', () => {
+  // Fetch config info from a simple endpoint
+  fetchJSON('/api/models').then(models => {
+    let html = '';
+    if (models) {
+      models.forEach(m => {
+        html += `<div class="row"><span class="label">${escapeHtml(m.name)}</span><span class="value">${escapeHtml(m.status)}</span></div>`;
+      });
+    }
+    html += `<div class="row"><span class="label">Hub version</span><span class="value">v0.1.0</span></div>`;
+    document.querySelector('#settings-body .row')?.remove();
+    settingsBody.innerHTML = html + '<div style="margin-top:12px;font-size:11px;color:#999">Double-click a chat name to rename it.</div>';
+    settingsOverlay.classList.add('open');
+  });
+});
 
+settingsClose.addEventListener('click', () => settingsOverlay.classList.remove('open'));
+settingsOverlay.addEventListener('click', e => { if (e.target === settingsOverlay) settingsOverlay.classList.remove('open'); });
+
+// ─── Init ───────────────────────────────────────────────
 newSessionBtn.addEventListener('click', () => createSession(''));
 
 fetch('/api/models').then(r => r.json()).then(models => {
-  modelDots.innerHTML = models.map(m => `<span><span class="model-dot"></span>${escapeHtml(m.name)}</span>`).join('');
-  document.getElementById('stat-models').innerHTML = models.length + ' models';
+  if (models) {
+    modelDots.innerHTML = models.map(m => `<span class="model-indicator"><span class="model-dot"></span>${escapeHtml(m.name)}</span>`).join('');
+    document.getElementById('stat-models').innerHTML = models.length + ' models';
+  }
 });
 
 loadSessionList();
