@@ -34,7 +34,7 @@ func NewServer(state *engine.ConversationState, port int) *Server {
 	}
 }
 
-// Start begins serving HTTP requests.
+// Start begins serving HTTP requests on 0.0.0.0.
 func (s *Server) Start() error {
 	mux := http.NewServeMux()
 
@@ -44,7 +44,14 @@ func (s *Server) Start() error {
 	mux.HandleFunc("GET /api/models", s.handleGetModels)
 	mux.HandleFunc("GET /api/stream", s.handleSSE)
 
-	addr := fmt.Sprintf(":%d", s.port)
+	// Session management
+	mux.HandleFunc("GET /api/sessions", s.handleGetSessions)
+	mux.HandleFunc("POST /api/sessions", s.handleCreateSession)
+	mux.HandleFunc("DELETE /api/sessions/{id}", s.handleDeleteSession)
+	mux.HandleFunc("PUT /api/sessions/{id}", s.handleRenameSession)
+	mux.HandleFunc("GET /api/sessions/{id}/messages", s.handleGetSessionMessages)
+
+	addr := fmt.Sprintf("0.0.0.0:%d", s.port)
 	slog.Info("web server starting", "addr", addr)
 	s.server = &http.Server{Addr: addr, Handler: mux}
 	return s.server.ListenAndServe()
@@ -72,7 +79,19 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGetMessages(w http.ResponseWriter, r *http.Request) {
-	msgs := s.state.GetMessages()
+	sessionID := r.URL.Query().Get("session")
+	msgs := s.state.GetMessages(sessionID)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(msgs)
+}
+
+func (s *Server) handleGetSessionMessages(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	msgs := s.state.GetMessages(id)
+	if msgs == nil {
+		http.Error(w, "session not found", http.StatusNotFound)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(msgs)
 }
@@ -102,8 +121,6 @@ func (s *Server) handleSend(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGetModels(w http.ResponseWriter, r *http.Request) {
-	// Return a list of configured models — this is informational only.
-	// The actual config is in the engine. For now, return a static list.
 	type ModelInfo struct {
 		Name   string `json:"name"`
 		Status string `json:"status"`
@@ -115,6 +132,59 @@ func (s *Server) handleGetModels(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(models)
+}
+
+func (s *Server) handleGetSessions(w http.ResponseWriter, r *http.Request) {
+	sessions := s.state.GetSessions()
+	activeID := s.state.GetActiveSessionID()
+	resp := struct {
+		Sessions []*engine.Session `json:"sessions"`
+		Active   string           `json:"active"`
+	}{Sessions: sessions, Active: activeID}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Name string `json:"name"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	if req.Name == "" {
+		req.Name = fmt.Sprintf("Chat %d", len(s.state.GetSessions())+1)
+	}
+	sess := s.state.CreateSession(req.Name)
+
+	// Notify SSE clients of session switch
+	s.subs.Send(models.StreamEvent{Type: "session_switched", Text: sess.ID})
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(sess)
+}
+
+func (s *Server) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if s.state.DeleteSession(id) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	http.Error(w, "session not found", http.StatusNotFound)
+}
+
+func (s *Server) handleRenameSession(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if s.state.RenameSession(id, req.Name) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	http.Error(w, "session not found", http.StatusNotFound)
 }
 
 func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
@@ -131,7 +201,6 @@ func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
 	ch := s.subs.Subscribe()
 	defer s.subs.Unsubscribe(ch)
 
-	// Send initial connection event
 	fmt.Fprintf(w, "event: connected\ndata: {}\n\n")
 	flusher.Flush()
 
@@ -149,12 +218,6 @@ func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
 			flusher.Flush()
 		}
 	}
-}
-
-// SSEEvent is a generic SSE event.
-type SSEEvent struct {
-	Type string      `json:"type"`
-	Data interface{} `json:"data"`
 }
 
 // SSESubscriber manages SSE client connections.
@@ -191,7 +254,6 @@ func (s *SSESubscriber) Send(evt models.StreamEvent) {
 		select {
 		case ch <- evt:
 		default:
-			// drop slow clients
 		}
 	}
 }
