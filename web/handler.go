@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -21,6 +22,7 @@ type Server struct {
 	state   *engine.ConversationState
 	subs    *SSESubscriber
 	port    int
+	server  *http.Server
 }
 
 // NewServer creates a new web server.
@@ -44,7 +46,16 @@ func (s *Server) Start() error {
 
 	addr := fmt.Sprintf(":%d", s.port)
 	slog.Info("web server starting", "addr", addr)
-	return http.ListenAndServe(addr, mux)
+	s.server = &http.Server{Addr: addr, Handler: mux}
+	return s.server.ListenAndServe()
+}
+
+// Shutdown gracefully shuts down the server.
+func (s *Server) Shutdown(ctx context.Context) error {
+	if s.server != nil {
+		return s.server.Shutdown(ctx)
+	}
+	return nil
 }
 
 // Broadcast starts forwarding state.Broadcast events to SSE subscribers.

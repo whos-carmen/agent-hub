@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/whos-carmen/agent-hub/config"
 	"github.com/whos-carmen/agent-hub/engine"
@@ -98,6 +99,9 @@ func runServer(cfg config.Config) {
 
 	<-ctx.Done()
 	slog.Info("shutting down")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	srv.Shutdown(shutdownCtx)
 }
 
 func runAsk(cfg config.Config, args []string) {
@@ -117,7 +121,7 @@ func runAsk(cfg config.Config, args []string) {
 	}
 
 	chunkChan := make(chan models.StreamEvent, 64)
-	go models.StreamResponse(mc, "", prompt, "", chunkChan)
+	go models.StreamResponse(context.Background(), mc, "", prompt, "", chunkChan)
 
 	for evt := range chunkChan {
 		switch evt.Type {
@@ -152,7 +156,7 @@ func runDiscuss(cfg config.Config, args []string) {
 			case "chunk":
 				fmt.Print(evt.Chunk)
 			case "done":
-				fmt.Println("\n")
+				fmt.Println()
 			}
 		}
 	}()
@@ -165,8 +169,6 @@ func runDiscuss(cfg config.Config, args []string) {
 	}
 
 	engine.Dispatch(plan, state, modelConfigs)
-
-	_ = state // state isn't printed but used for context
 }
 
 func runModels(cfg config.Config) {
@@ -189,7 +191,7 @@ func buildAskModelConfigs(cfg config.Config) map[string]models.ModelConfig {
 	for name, mdef := range cfg.Models {
 		apiKey := mdef.ResolveAPIKey()
 		if apiKey != "" {
-			mc[name] = models.NewModelConfig(name, apiKey, mdef.BaseURL, mdef.Type, mdef.ModelName)
+			mc[name] = models.NewModelConfig(name, apiKey, mdef.BaseURL, mdef.Type, mdef.ModelName, mdef.APIKeyEnv)
 		}
 	}
 	return mc

@@ -51,7 +51,11 @@ func buildModelConfigs(cfg config.Config) map[string]models.ModelConfig {
 	mc := make(map[string]models.ModelConfig)
 	for name, mdef := range cfg.Models {
 		apiKey := mdef.ResolveAPIKey()
-		mc[name] = models.NewModelConfig(name, apiKey, mdef.BaseURL, mdef.Type, mdef.ModelName)
+		if apiKey == "" {
+			slog.Warn("model %q has no API key (set %s), skipping", name, mdef.APIKeyEnv)
+			continue
+		}
+		mc[name] = models.NewModelConfig(name, apiKey, mdef.BaseURL, mdef.Type, mdef.ModelName, mdef.APIKeyEnv)
 	}
 	return mc
 }

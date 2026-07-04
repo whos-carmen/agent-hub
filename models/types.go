@@ -63,9 +63,10 @@ type Dispatch struct {
 
 // ModelConfig is the runtime representation of a configured model.
 type ModelConfig struct {
-	Name      string
-	APIKey    string
-	BaseURL   string
-	Type      string // "deepseek" | "openai"
-	ModelName string
+	Name       string
+	APIKey     string
+	BaseURL    string
+	Type       string // "deepseek" | "openai"
+	ModelName  string
+	EnvVarName string
 }

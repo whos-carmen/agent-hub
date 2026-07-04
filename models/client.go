@@ -3,12 +3,16 @@ package models
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
+
+var httpClient = &http.Client{Timeout: 120 * time.Second}
 
 // ChatMessage is the standard OpenAI/Dify chat message format.
 type ChatMessage struct {
@@ -40,7 +44,7 @@ type ChatChunk struct {
 }
 
 // StreamResponse calls the model API with streaming and returns chunks via a channel.
-func StreamResponse(cfg ModelConfig, systemPrompt string, userPrompt string, fileContext string, chunkChan chan<- StreamEvent) {
+func StreamResponse(ctx context.Context, cfg ModelConfig, systemPrompt string, userPrompt string, fileContext string, chunkChan chan<- StreamEvent) {
 	defer close(chunkChan)
 
 	messages := buildMessages(systemPrompt, userPrompt, fileContext)
@@ -57,7 +61,7 @@ func StreamResponse(cfg ModelConfig, systemPrompt string, userPrompt string, fil
 		return
 	}
 
-	req, err := http.NewRequest("POST", cfg.BaseURL, bytes.NewReader(bodyBytes))
+	req, err := http.NewRequestWithContext(ctx, "POST", cfg.BaseURL, bytes.NewReader(bodyBytes))
 	if err != nil {
 		chunkChan <- StreamEvent{Type: "error", Error: fmt.Sprintf("create request: %v", err)}
 		return
@@ -71,7 +75,7 @@ func StreamResponse(cfg ModelConfig, systemPrompt string, userPrompt string, fil
 		req.Header.Set("Accept", "text/event-stream")
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		chunkChan <- StreamEvent{Type: "error", Error: fmt.Sprintf("http request: %v", err)}
 		return
@@ -144,7 +148,7 @@ func StreamResponse(cfg ModelConfig, systemPrompt string, userPrompt string, fil
 }
 
 // CallModelNonStreaming sends a non-streaming request and returns the full text.
-func CallModelNonStreaming(cfg ModelConfig, systemPrompt string, userPrompt string, fileContext string) (string, error) {
+func CallModelNonStreaming(ctx context.Context, cfg ModelConfig, systemPrompt string, userPrompt string, fileContext string) (string, error) {
 	messages := buildMessages(systemPrompt, userPrompt, fileContext)
 
 	reqBody := ChatRequest{
@@ -158,7 +162,7 @@ func CallModelNonStreaming(cfg ModelConfig, systemPrompt string, userPrompt stri
 		return "", fmt.Errorf("marshal: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", cfg.BaseURL, bytes.NewReader(bodyBytes))
+	req, err := http.NewRequestWithContext(ctx, "POST", cfg.BaseURL, bytes.NewReader(bodyBytes))
 	if err != nil {
 		return "", fmt.Errorf("create request: %w", err)
 	}
@@ -166,7 +170,7 @@ func CallModelNonStreaming(cfg ModelConfig, systemPrompt string, userPrompt stri
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("http: %w", err)
 	}

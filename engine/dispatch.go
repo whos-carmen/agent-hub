@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -57,7 +58,7 @@ func dispatchSingle(plan models.DispatchPlan, dispatchID string, state *Conversa
 
 	// No placeholder message — stream starts via broadcast, final message added on "done"
 
-	go models.StreamResponse(cfg, "", plan.Prompt, "", chunkChan)
+	go models.StreamResponse(context.Background(), cfg, "", plan.Prompt, "", chunkChan)
 
 	for evt := range chunkChan {
 		switch evt.Type {
@@ -120,7 +121,7 @@ func dispatchParallel(plan models.DispatchPlan, dispatchID string, state *Conver
 			chunkChan := make(chan models.StreamEvent, 64)
 			msgID := generateID()
 
-			go models.StreamResponse(cfg, "", plan.Prompt, "", chunkChan)
+			go models.StreamResponse(context.Background(), cfg, "", plan.Prompt, "", chunkChan)
 
 			var fullText strings.Builder
 			for evt := range chunkChan {
@@ -204,7 +205,7 @@ func dispatchDiscussion(plan models.DispatchPlan, dispatchID string, state *Conv
 			chunkChan := make(chan models.StreamEvent, 64)
 			msgID := generateID()
 
-			go models.StreamResponse(cfg, "You are participating in a multi-model discussion. Respond to the current topic concisely.", currentPrompt, "", chunkChan)
+			go models.StreamResponse(context.Background(), cfg, "You are participating in a multi-model discussion. Respond to the current topic concisely.", currentPrompt, "", chunkChan)
 
 			var reply strings.Builder
 			for evt := range chunkChan {

@@ -8,23 +8,24 @@ package models
 import "fmt"
 
 // NewModelConfig creates a ModelConfig from a provider definition.
-func NewModelConfig(name, apiKey, baseURL, providerType, modelName string) ModelConfig {
+func NewModelConfig(name, apiKey, baseURL, providerType, modelName, envVarName string) ModelConfig {
 	if modelName == "" {
 		modelName = name
 	}
 	return ModelConfig{
-		Name:      name,
-		APIKey:    apiKey,
-		BaseURL:   baseURL,
-		Type:      providerType,
-		ModelName: modelName,
+		Name:       name,
+		APIKey:     apiKey,
+		BaseURL:    baseURL,
+		Type:       providerType,
+		ModelName:  modelName,
+		EnvVarName: envVarName,
 	}
 }
 
 // Validate checks that the config has the minimum required fields.
 func (m ModelConfig) Validate() error {
 	if m.APIKey == "" {
-		return fmt.Errorf("model %q: API key is empty (check %s env var)", m.Name, m.APIKey)
+		return fmt.Errorf("model %q: API key is empty (set %s)", m.Name, m.EnvVarName)
 	}
 	if m.BaseURL == "" {
 		return fmt.Errorf("model %q: base URL is empty", m.Name)

@@ -106,6 +106,10 @@ evtSource.addEventListener('error', e => {
   const data = JSON.parse(e.data);
   addErrorMessage(data.error || 'Unknown error');
 });
+evtSource.addEventListener('status', e => {
+  const data = JSON.parse(e.data);
+  addDispatchNotice(data.text || '');
+});
 evtSource.addEventListener('dispatch', e => {
   const data = JSON.parse(e.data);
   addDispatchNotice(data.text || '');
@@ -113,6 +117,16 @@ evtSource.addEventListener('dispatch', e => {
 evtSource.addEventListener('connected', () => {
   console.log('SSE connected');
 });
+evtSource.onerror = function() {
+  let banner = document.getElementById('sse-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'sse-banner';
+    banner.className = 'fixed top-0 left-0 right-0 bg-amber-500 text-white text-center text-xs py-1';
+    banner.textContent = 'Connection lost — reconnecting...';
+    document.body.prepend(banner);
+  }
+};
 
 // Send message
 inputForm.addEventListener('submit', e => {
@@ -140,7 +154,7 @@ function renderMessage(msg) {
     const isStreaming = msg.status === 'streaming' || msg.status === 'pending';
     el.className = 'flex items-start gap-3';
     el.innerHTML = `
-      <div class="flex-shrink-0 w-8 h-8 rounded-full ${isStreaming ? 'bg-amber-400' : 'bg-slate-500'} flex items-center justify-center text-xs font-bold text-white">${getModelInitial(msg.model_name)}</div>
+      <div class="flex-shrink-0 w-8 h-8 rounded-full ${isStreaming ? 'bg-amber-400' : 'bg-slate-500'} flex items-center justify-center text-xs font-bold text-white">${escapeHtml(getModelInitial(msg.model_name))}</div>
       <div class="flex-1 min-w-0">
         <div class="flex items-baseline gap-2 mb-1">
           <span class="text-sm font-semibold text-gray-700 dark:text-slate-300">${escapeHtml(msg.model_name)}</span>
@@ -161,7 +175,7 @@ function renderMessage(msg) {
 }
 
 function updateStreamingMessage(modelName, chunk) {
-  let existing = messagesEl.querySelector(`[data-model="${modelName}"].streaming`);
+  let existing = findStreamingEl(modelName);
   if (existing) {
     const content = existing.querySelector('.message-content');
     if (content) {
@@ -177,7 +191,7 @@ function updateStreamingMessage(modelName, chunk) {
   el.className = 'message-enter flex items-start gap-3 streaming';
   el.dataset.model = modelName;
   el.innerHTML = `
-    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-amber-400 flex items-center justify-center text-xs font-bold text-white">${getModelInitial(modelName)}</div>
+    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-amber-400 flex items-center justify-center text-xs font-bold text-white">${escapeHtml(getModelInitial(modelName))}</div>
     <div class="flex-1 min-w-0">
       <div class="flex items-baseline gap-2 mb-1">
         <span class="text-sm font-semibold text-gray-700 dark:text-slate-300">${escapeHtml(modelName)}</span>
@@ -190,7 +204,7 @@ function updateStreamingMessage(modelName, chunk) {
 
 function finalizeMessage(msg) {
   // Find and update the streaming element
-  const streamEl = messagesEl.querySelector(`[data-model="${msg.model_name}"].streaming`);
+  const streamEl = findStreamingEl(msg.model_name);
   if (streamEl) {
     streamEl.classList.remove('streaming');
     const content = streamEl.querySelector('.message-content');
@@ -248,6 +262,14 @@ function renderContent(text) {
 
 function getModelInitial(name) {
   return (name || '?').charAt(0).toUpperCase();
+}
+
+function findStreamingEl(modelName) {
+  const els = document.querySelectorAll('.streaming');
+  for (const el of els) {
+    if (el.dataset.model === modelName) return el;
+  }
+  return null;
 }
 
 function formatTime(ts) {

@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -37,7 +38,7 @@ func AggregateAndSynthesize(responses []models.Message, primaryCfg models.ModelC
 		Text: fmt.Sprintf("● %s: Synthesising parallel responses...", primaryCfg.Name),
 	})
 
-	go models.StreamResponse(primaryCfg, "You are a synthesiser. Combine the following model responses into a clear, concise summary.", prompt, "", chunkChan)
+	go models.StreamResponse(context.Background(), primaryCfg, "You are a synthesiser. Combine the following model responses into a clear, concise summary.", prompt, "", chunkChan)
 
 	var fullText strings.Builder
 	for evt := range chunkChan {
