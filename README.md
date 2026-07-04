@@ -175,39 +175,92 @@ Icons: `●` = currently responding, `◇` = system event, `├` = dispatch targ
 
 ---
 
-## Web UI layout
+## Web UI
 
-The web dashboard is served on `http://localhost:8080` (or `0.0.0.0:8080` for LAN access). Same state as the TUI, rendered as HTML:
+The web UI is a proper chat-style interface — visually distinct from the TUI but sharing the same feature set and backing state. Served via `//go:embed`, zero build tooling.
+
+Served on `http://localhost:8080` (or `0.0.0.0:8080` for LAN access from other machines on the network).
+
+### Stack
+
+| Layer | Technology | Why |
+|---|---|---|
+| HTML | Single `index.html` served via `//go:embed` | Zero build step, one binary |
+| CSS | Tailwind via CDN (`<script src="https://cdn.tailwindcss.com">`) | Utility-first, responsive, dark mode, no npm |
+| JS | Vanilla (~150 lines) | SSE listener, auto-scroll, form submit, model status polling |
+| Backend | `net/http` + SSE endpoint | Same Go process, same conversation state |
+
+### Layout
 
 ```
- ┌─ agent-hub ───────────────────────────────────────────┐
- │ ● deepseek-pro  ● mimo-pro  ● flash                   │
- ├─ Message Log ─────────────────────────────────────────┤
- │                                                        │
- │ [14:02:01]  You: review auth.rs for security           │
- │ [14:02:03]  ● Flash: Routing to deepseek-pro...        │
- │ [14:02:05]  ◇ Dispatched: deepseek-pro + mimo          │
- │ [14:02:06]  ├ DeepSeek-Pro ··· streaming...            │
- │ [14:02:08]  ├ Mimo-Pro     ··· streaming...            │
- │ [14:02:10]  ✓ DeepSeek-Pro: 3 issues found             │
- │ [14:02:12]  ✓ Mimo-Pro: 2 issues found                 │
- │ [14:02:14]  ● Flash: Consolidated review:              │
- │              2 critical, 3 high priority issues         │
- │                                                        │
- │ ┌────────────────────────────────────────────────────┐ │
- │ │ [input box]                                  [Send]│ │
- │ └────────────────────────────────────────────────────┘ │
- └────────────────────────────────────────────────────────┘
+┌─ agent-hub ───────────────────────────────────────────┐
+│ ● deepseek-pro  ● mimo-pro  ● flash                   │
+├───────────────────────────────────────────────────────┤
+│                                                        │
+│  ┌─────────────────────────────────────────────┐      │
+│  │ 14:02:01                                     │      │
+│  │ You: review auth.rs for security             │      │
+│  └─────────────────────────────────────────────┘      │
+│                                                        │
+│  ┌─────────────────────────────────────────────┐      │
+│  │ 14:02:03  ● Flash                           │      │
+│  │ Routing to deepseek-pro + mimo for review   │      │
+│  └─────────────────────────────────────────────┘      │
+│                                                        │
+│  14:02:06                                              │
+│  ┌─────────────────┐  ┌─────────────────┐             │
+│  │ DeepSeek-Pro    │  │ Mimo-Pro        │             │
+│  │ ████████████░░  │  │ ████████░░░░░░  │             │
+│  │ reviewing...    │  │ reviewing...    │             │
+│  └─────────────────┘  └─────────────────┘             │
+│                                                        │
+│  ┌─────────────────────────────────────────────┐      │
+│  │ 14:02:10  ✓ DeepSeek-Pro                     │      │
+│  │ Found: SQL injection in login handler (line 142)  │
+│  │ Found: Missing rate limiting on /api/auth         │
+│  │ Found: Hardcoded JWT secret in config              │
+│  └─────────────────────────────────────────────┘      │
+│                                                        │
+│  ┌─────────────────────────────────────────────┐      │
+│  │ 14:02:12  ✓ Mimo-Pro                         │      │
+│  │ Found: Session tokens lack rotation mechanism│      │
+│  │ Found: No CSRF protection on POST endpoints  │      │
+│  └─────────────────────────────────────────────┘      │
+│                                                        │
+│  ┌─────────────────────────────────────────────┐      │
+│  │ 14:02:14  ● Flash                           │      │
+│  │ Consolidated review:                        │      │
+│  │ 2 critical, 3 high priority issues          │      │
+│  │ Overlap: input validation in login handler  │      │
+│  └─────────────────────────────────────────────┘      │
+│                                                        │
+│  ┌──────────────────────────────────────────┐ [Send]  │
+│  │ review auth.rs                           │         │
+│  └──────────────────────────────────────────┘         │
+└───────────────────────────────────────────────────────┘
 ```
 
-Implemented as:
-- **Single-page HTML** served via `//go:embed` — one HTML file with inline CSS/JS
-- **SSE endpoint** `/api/stream` — pushes new messages to the browser as they arrive
-- **REST endpoints**:
-  - `GET /api/messages` — fetch message log
-  - `POST /api/send` — submit a message from the web UI
-  - `GET /api/models` — model health/status
-- **No framework** — bare HTML + a few lines of JS for SSE handling and auto-scroll
+### Key design decisions
+
+**Side-by-side parallel dispatch cards**: when the router dispatches to multiple models simultaneously, the web UI shows them as adjacent cards with independent progress bars. Each card streams its response live. This is the one visual element that's *better* than the TUI — the TUI can only interleave lines, the web UI can use true parallel layout.
+
+**SSE streaming**: `GET /api/stream` pushes `event: message` and `event: status` events. The JS handler appends them to the DOM as they arrive. Same channel backs both TUI and web UI — the SSE handler is a thin wrapper around the shared conversation state broadcast.
+
+**No refresh needed**: messages arrive via SSE, model status updates arrive via SSE, router dispatch events arrive via SSE. The page is live from connection to close.
+
+**Responsive**: on narrow screens, parallel cards stack vertically. On wide screens, they sit side-by-side.
+
+**Dark mode**: respects `prefers-color-scheme` via Tailwind's `dark:` variant. No toggle needed.
+
+### Endpoints
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/` | GET | Web dashboard (single HTML file) |
+| `/api/messages` | GET | Fetch full message log (JSON) |
+| `/api/send` | POST | Submit a message |
+| `/api/models` | GET | Model health and status |
+| `/api/stream` | GET | SSE stream (live message push) |
 
 ---
 
@@ -229,11 +282,12 @@ The TUI is the primary interface. CLI subcommands exist for automation or quick 
 
 Not a framework (CrewAI), not an app builder (Dify), not a multi-model chat client (LobeHub). It occupies a different niche:
 
-- **Live parallel streaming TUI** — watch multiple models respond simultaneously in your terminal. Existing tools show one model at a time in a web chat bubble.
+- **Live parallel streaming in TUI + web UI** — watch multiple models respond simultaneously in your terminal or browser. The web UI shows parallel dispatches as side-by-side cards with independent progress bars — something no existing tool does.
 - **Conversation loop with routing** — the hub *decides* which models to involve based on what you're asking. The router is the core feature, not a plugin or manual toggle.
-- **Zero-infra single binary** — `go build`, `scp`, `./hub tui`. No Docker compose, no database, no Python venv, no web server, no npm install.
+- **Zero-infra single binary** — `go build`, `scp`, `./hub tui`. No Docker compose, no database, no Python venv, no npm install, no web server setup. The web UI is embedded in the binary via `//go:embed`.
 - **Design for the model, not the role** — CrewAI makes you define agent backstories. The hub doesn't role-play. The difference between DeepSeek Pro and Mimo Pro is their *training and architecture*, not a prompt describing their personality.
 - **Repo ownership** — the hub owns the git repo, reads files for context, applies diffs. Models never touch the filesystem.
+- **Web UI that's better than the TUI** — the web dashboard has true parallel layout (side-by-side streaming cards), smooth animations, dark mode, and works on mobile. Same features, better visuals. Tailwind CDN + vanilla JS, no build step.
 
 ---
 
@@ -280,12 +334,16 @@ Not a framework (CrewAI), not an app builder (Dify), not a multi-model chat clie
 - Verifiable: parallel dispatch shows multiple models streaming simultaneously
 
 ### Phase 7: Web dashboard
-- `web/handler.go` — HTTP server with `net/http` + `embed`
-- `web/static/` — single HTML file with inline CSS/JS, embedded via `//go:embed`
-- `web/sse.go` — SSE endpoint for live message push to browser
-- REST endpoints: `/api/messages`, `/api/send`, `/api/models`
-- Wire: web UI shares the same `ConversationState` as the TUI
-- Verifiable: open `http://lxc-ip:8080` in a browser, see the same live message log
+- `web/handler.go` — HTTP server with `net/http` serving: `/` (dashboard), `/api/send` (POST), `/api/messages` (GET), `/api/models` (GET), `/api/stream` (SSE)
+- `web/static/index.html` — single HTML file, embedded via `//go:embed`
+  - Tailwind CSS via CDN (`cdn.tailwindcss.com`)
+  - Vanilla JS (~150 lines): SSE listener for live streaming, auto-scroll, form submit, model status polling
+  - Side-by-side dispatch cards for parallel model responses
+  - Dark mode via `prefers-color-scheme`
+  - Responsive layout (cards stack on narrow screens)
+- `web/sse.go` — SSE endpoint that broadcasts from the same channel the TUI uses
+- Wire: `ConversationState` broadcasts updates to all connected SSE clients
+- Verifiable: open `http://lxc-ip:8080` in a browser, see live streaming parallel dispatch
 
 ### Phase 8: Repo manager
 - `repo/manager.go` — git operations (clone, read files, branch, apply diffs, commit)
