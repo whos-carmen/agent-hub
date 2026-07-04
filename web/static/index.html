@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>agent-hub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        hub: {
+          bg: '#0f172a',
+          card: '#1e293b',
+          border: '#334155',
+          text: '#f1f5f9',
+          muted: '#94a3b8',
+          accent: '#38bdf8',
+        }
+      }
+    }
+  }
+}
+// Auto dark mode
+if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+  document.documentElement.classList.add('dark')
+}
+</script>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+#messages { scroll-behavior: smooth; }
+.message-enter { animation: fadeIn 0.3s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.typing::after { content: '▊'; animation: blink 1s step-end infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+</style>
+</head>
+<body class="h-full bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-slate-100">
+<div class="h-full flex flex-col max-w-4xl mx-auto px-4">
+  <!-- Header -->
+  <header class="flex items-center justify-between py-3 border-b border-gray-200 dark:border-slate-700">
+    <h1 class="text-lg font-semibold"><span class="text-sky-500">agent</span>-hub</h1>
+    <div id="model-status" class="flex gap-3 text-xs text-gray-500 dark:text-slate-400"></div>
+  </header>
+
+  <!-- Messages -->
+  <div id="messages" class="flex-1 overflow-y-auto py-4 space-y-3"></div>
+
+  <!-- Input -->
+  <form id="input-form" class="flex gap-2 pb-4 pt-2">
+    <input
+      id="input-box"
+      type="text"
+      placeholder="Type a message... (e.g. review auth.rs, or discuss design ideas)"
+      class="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent text-sm"
+    >
+    <button
+      type="submit"
+      class="px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-lg font-medium text-sm transition-colors disabled:opacity-50"
+    >Send</button>
+  </form>
+</div>
+
+<script>
+const messagesEl = document.getElementById('messages');
+const inputBox = document.getElementById('input-box');
+const inputForm = document.getElementById('input-form');
+const modelStatus = document.getElementById('model-status');
+
+// Fetch initial messages
+fetch('/api/messages')
+  .then(r => r.json())
+  .then(msgs => {
+    msgs.forEach(m => renderMessage(m));
+    scrollToBottom();
+  });
+
+// Fetch model status
+fetch('/api/models')
+  .then(r => r.json())
+  .then(models => {
+    models.forEach(m => {
+      const dot = document.createElement('span');
+      dot.className = 'flex items-center gap-1';
+      dot.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400"></span>';
+      dot.appendChild(document.createTextNode(m.name));
+      modelStatus.appendChild(dot);
+    });
+  });
+
+// SSE stream
+const evtSource = new EventSource('/api/stream');
+evtSource.addEventListener('chunk', e => {
+  const data = JSON.parse(e.data);
+  updateStreamingMessage(data.message?.model_name || 'model', data.chunk || '');
+  scrollToBottom();
+});
+evtSource.addEventListener('done', e => {
+  const data = JSON.parse(e.data);
+  finalizeMessage(data.message);
+  scrollToBottom();
+});
+evtSource.addEventListener('error', e => {
+  const data = JSON.parse(e.data);
+  addErrorMessage(data.error || 'Unknown error');
+});
+evtSource.addEventListener('dispatch', e => {
+  const data = JSON.parse(e.data);
+  addDispatchNotice(data.text || '');
+});
+evtSource.addEventListener('connected', () => {
+  console.log('SSE connected');
+});
+
+// Send message
+inputForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const content = inputBox.value.trim();
+  if (!content) return;
+  inputBox.value = '';
+  addUserMessage(content);
+  fetch('/api/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  });
+});
+
+function renderMessage(msg) {
+  const el = document.createElement('div');
+  el.className = 'message-enter';
+  el.dataset.msgId = msg.id;
+
+  if (msg.role === 'user') {
+    el.className += ' flex justify-end';
+    el.innerHTML = `<div class="max-w-[75%] px-4 py-2.5 rounded-2xl bg-sky-500 text-white text-sm">${escapeHtml(msg.content)}</div>`;
+  } else if (msg.role === 'model') {
+    const isStreaming = msg.status === 'streaming' || msg.status === 'pending';
+    el.className = 'flex items-start gap-3';
+    el.innerHTML = `
+      <div class="flex-shrink-0 w-8 h-8 rounded-full ${isStreaming ? 'bg-amber-400' : 'bg-slate-500'} flex items-center justify-center text-xs font-bold text-white">${getModelInitial(msg.model_name)}</div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-baseline gap-2 mb-1">
+          <span class="text-sm font-semibold text-gray-700 dark:text-slate-300">${escapeHtml(msg.model_name)}</span>
+          <span class="text-xs text-gray-400">${formatTime(msg.created_at)}</span>
+          ${isStreaming ? '<span class="text-xs text-amber-500">streaming...</span>' : ''}
+        </div>
+        <div class="prose prose-sm dark:prose-invert max-w-none text-gray-800 dark:text-slate-200 message-content">${renderContent(msg.content || '')}</div>
+      </div>`;
+    if (isStreaming) {
+      el.querySelector('.message-content').classList.add('typing');
+    }
+  } else if (msg.role === 'system' || msg.status === 'error') {
+    el.className = 'flex justify-center';
+    el.innerHTML = `<div class="px-4 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs">${escapeHtml(msg.content)}</div>`;
+  }
+
+  messagesEl.appendChild(el);
+}
+
+function updateStreamingMessage(modelName, chunk) {
+  let existing = messagesEl.querySelector(`[data-model="${modelName}"].streaming`);
+  if (existing) {
+    const content = existing.querySelector('.message-content');
+    if (content) {
+      content.textContent += chunk;
+      // Remove typing indicator since we're getting content
+      content.classList.remove('typing');
+    }
+    return;
+  }
+
+  // Create a new streaming entry
+  const el = document.createElement('div');
+  el.className = 'message-enter flex items-start gap-3 streaming';
+  el.dataset.model = modelName;
+  el.innerHTML = `
+    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-amber-400 flex items-center justify-center text-xs font-bold text-white">${getModelInitial(modelName)}</div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-baseline gap-2 mb-1">
+        <span class="text-sm font-semibold text-gray-700 dark:text-slate-300">${escapeHtml(modelName)}</span>
+        <span class="text-xs text-amber-500">streaming...</span>
+      </div>
+      <div class="text-sm text-gray-800 dark:text-slate-200 message-content typing">${escapeHtml(chunk)}</div>
+    </div>`;
+  messagesEl.appendChild(el);
+}
+
+function finalizeMessage(msg) {
+  // Find and update the streaming element
+  const streamEl = messagesEl.querySelector(`[data-model="${msg.model_name}"].streaming`);
+  if (streamEl) {
+    streamEl.classList.remove('streaming');
+    const content = streamEl.querySelector('.message-content');
+    if (content) {
+      content.textContent = msg.content || '';
+      content.classList.remove('typing');
+    }
+    const badge = streamEl.querySelector('.text-amber-500');
+    if (badge) badge.remove();
+    return;
+  }
+  // Fallback: render as a complete message
+  msg.status = 'complete';
+  renderMessage(msg);
+}
+
+function addUserMessage(content) {
+  const el = document.createElement('div');
+  el.className = 'message-enter flex justify-end';
+  el.innerHTML = `<div class="max-w-[75%] px-4 py-2.5 rounded-2xl bg-sky-500 text-white text-sm">${escapeHtml(content)}</div>`;
+  messagesEl.appendChild(el);
+  scrollToBottom();
+}
+
+function addDispatchNotice(text) {
+  const el = document.createElement('div');
+  el.className = 'message-enter flex justify-center';
+  el.innerHTML = `<div class="px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs">${escapeHtml(text)}</div>`;
+  messagesEl.appendChild(el);
+  scrollToBottom();
+}
+
+function addErrorMessage(text) {
+  const el = document.createElement('div');
+  el.className = 'message-enter flex justify-center';
+  el.innerHTML = `<div class="px-4 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs">Error: ${escapeHtml(text)}</div>`;
+  messagesEl.appendChild(el);
+  scrollToBottom();
+}
+
+function renderContent(text) {
+  if (!text) return '';
+  // Simple markdown-ish rendering
+  let html = escapeHtml(text);
+  // Code blocks
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-gray-100 dark:bg-slate-800 p-3 rounded-lg overflow-x-auto my-2 text-xs"><code>$2</code></pre>');
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code class="bg-gray-100 dark:bg-slate-800 px-1 rounded text-xs">$1</code>');
+  // Bold
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // Newlines
+  html = html.replace(/\n/g, '<br>');
+  return html;
+}
+
+function getModelInitial(name) {
+  return (name || '?').charAt(0).toUpperCase();
+}
+
+function formatTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function scrollToBottom() {
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+</script>
+</body>
+</html>
