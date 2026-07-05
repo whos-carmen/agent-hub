@@ -1,6 +1,9 @@
 package engine
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -36,20 +39,41 @@ type ConversationState struct {
 
 	// Input is the channel for receiving new user messages.
 	Input chan string
+
+	// persistPath is the filesystem path for session persistence.
+	persistPath string
 }
 
 // NewState creates a new conversation state with a default session.
 func NewState() *ConversationState {
+	return NewPersistentState("")
+}
+
+// NewPersistentState creates state that persists to file. If path is empty, no persistence.
+func NewPersistentState(path string) *ConversationState {
 	s := &ConversationState{
-		Broadcast: make(chan models.StreamEvent, 256),
-		Input:     make(chan string, 32),
+		Broadcast:   make(chan models.StreamEvent, 256),
+		Input:       make(chan string, 32),
+		persistPath: path,
 	}
+
+	// Try to load from disk
+	if path != "" {
+		if loaded := loadState(path); loaded != nil {
+			s.Sessions = loaded.Sessions
+			s.ActiveSessionID = loaded.ActiveSessionID
+			return s
+		}
+	}
+
+	// No saved state — create a default session
 	defaultSession := &Session{
 		ID:   generateID(),
 		Name: "Chat 1",
 	}
 	s.Sessions = append(s.Sessions, defaultSession)
 	s.ActiveSessionID = defaultSession.ID
+	s.maybeSave()
 	return s
 }
 
@@ -83,6 +107,7 @@ func (s *ConversationState) AddMessage(msg models.Message) int {
 	}
 	idx := len(session.Messages)
 	session.Messages = append(session.Messages, msg)
+	s.maybeSaveLocked()
 	return idx
 }
 
@@ -114,6 +139,7 @@ func (s *ConversationState) CreateSession(name string) *Session {
 	}
 	s.Sessions = append(s.Sessions, sess)
 	s.ActiveSessionID = sess.ID
+	s.maybeSaveLocked()
 	return sess
 }
 
@@ -124,6 +150,7 @@ func (s *ConversationState) SwitchSession(id string) bool {
 	for _, sess := range s.Sessions {
 		if sess.ID == id {
 			s.ActiveSessionID = id
+			s.maybeSaveLocked()
 			return true
 		}
 	}
@@ -140,6 +167,7 @@ func (s *ConversationState) DeleteSession(id string) bool {
 			if s.ActiveSessionID == id && len(s.Sessions) > 0 {
 				s.ActiveSessionID = s.Sessions[0].ID
 			}
+			s.maybeSaveLocked()
 			return true
 		}
 	}
@@ -170,6 +198,7 @@ func (s *ConversationState) RenameSession(id, name string) bool {
 	for _, sess := range s.Sessions {
 		if sess.ID == id {
 			sess.Name = name
+			s.maybeSaveLocked()
 			return true
 		}
 	}
@@ -183,6 +212,7 @@ func (s *ConversationState) SetSessionModel(id, model string) bool {
 	for _, sess := range s.Sessions {
 		if sess.ID == id {
 			sess.Model = model
+			s.maybeSaveLocked()
 			return true
 		}
 	}
@@ -224,4 +254,47 @@ func (s *ConversationState) BroadcastEvent(evt models.StreamEvent) {
 	case s.Broadcast <- evt:
 	default:
 	}
+}
+
+// ─── Persistence ────────────────────────────────────
+
+type persistedState struct {
+	ActiveSessionID string     `json:"active"`
+	Sessions        []*Session `json:"sessions"`
+}
+
+// maybeSave writes state to disk if persistence is enabled. Must hold s.mu.
+func (s *ConversationState) maybeSaveLocked() {
+	if s.persistPath == "" {
+		return
+	}
+	data, err := json.Marshal(persistedState{
+		ActiveSessionID: s.ActiveSessionID,
+		Sessions:        s.Sessions,
+	})
+	if err != nil {
+		return
+	}
+	dir := filepath.Dir(s.persistPath)
+	os.MkdirAll(dir, 0755)
+	os.WriteFile(s.persistPath, data, 0644)
+}
+
+// maybeSave is the public, lock-acquiring variant.
+func (s *ConversationState) maybeSave() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.maybeSaveLocked()
+}
+
+func loadState(path string) *persistedState {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	var ps persistedState
+	if err := json.Unmarshal(data, &ps); err != nil {
+		return nil
+	}
+	return &ps
 }

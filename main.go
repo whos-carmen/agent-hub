@@ -108,7 +108,9 @@ func resolveConfig(path string) (config.Config, error) {
 func runServer(cfg config.Config) {
 	slog.Info("starting agent-hub", "port", cfg.Port, "default_model", cfg.DefaultModel)
 
-	state := engine.NewState()
+	home, _ := os.UserHomeDir()
+	sessPath := filepath.Join(home, ".hub", "sessions.json")
+	state := engine.NewPersistentState(sessPath)
 
 	// Start conversation loop in background
 	go engine.RunLoop(state, cfg)
