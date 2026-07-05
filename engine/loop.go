@@ -1,25 +1,26 @@
 package engine
 
 import (
+	"context"
+	"encoding/json"
 	"log/slog"
+	"strings"
 
 	"github.com/whos-carmen/agent-hub/config"
 	"github.com/whos-carmen/agent-hub/models"
 )
 
-// RunLoop starts the conversation loop. It reads user input from state.Input,
-// routes it, dispatches it, and broadcasts results. Runs until stop is closed.
+// RunLoop starts the conversation loop with tool support.
 func RunLoop(state *ConversationState, cfg config.Config) {
 	modelConfigs := buildModelConfigs(cfg)
-
-	slog.Info("conversation loop started", "default_model", cfg.DefaultModel)
+	tools := NewToolRegistry()
+	slog.Info("conversation loop started", "default_model", cfg.DefaultModel, "tools", len(tools.Names()))
 
 	for input := range state.Input {
 		if input == "" {
 			continue
 		}
 
-		// Add user message to log
 		state.AddMessage(models.Message{
 			ID:      generateID(),
 			Role:    models.RoleUser,
@@ -27,25 +28,154 @@ func RunLoop(state *ConversationState, cfg config.Config) {
 			Status:  models.StatusComplete,
 		})
 
-		state.BroadcastEvent(models.StreamEvent{
-			Type: "status",
-			Text: "Routing...",
-		})
+		state.BroadcastEvent(models.StreamEvent{Type: "status", Text: "Thinking..."})
 
-		// Route — pass the active session's model override
 		sessionModel := state.GetActiveSessionModel(cfg.DefaultModel)
 		plan := Route(input, cfg, sessionModel)
+		modelName := plan.Models[0]
+		mc, ok := modelConfigs[modelName]
+		if !ok {
+			state.AddMessage(newErrorMessage("model not configured: "+modelName, modelName, ""))
+			continue
+		}
 
-		slog.Info("routed", "kind", plan.Kind, "models", plan.Models)
+		slog.Info("routed", "model", modelName)
 
-		state.BroadcastEvent(models.StreamEvent{
-			Type: "status",
-			Text: "Dispatching...",
-		})
+		msgs := buildConversation(state, mc, cfg, modelConfigs)
 
-		// Dispatch
-		Dispatch(plan, state, modelConfigs, cfg.DefaultModel)
+		// Agent loop: model → tool_calls → execute → feedback → loop
+		maxTurns := 8
+		for turn := 0; turn < maxTurns; turn++ {
+			chunkChan := make(chan models.StreamEvent, 128)
+			go models.StreamChatWithTools(context.Background(), mc, msgs, tools.OpenAIFormats(), chunkChan)
+
+			var fullText strings.Builder
+			var toolCalls []models.ToolCall
+			closed := false
+
+			for !closed {
+				select {
+				case evt, ok := <-chunkChan:
+					if !ok {
+						closed = true
+						continue
+					}
+					switch evt.Type {
+					case "chunk":
+						fullText.WriteString(evt.Chunk)
+						state.BroadcastEvent(models.StreamEvent{
+							Type:  "chunk",
+							Chunk: evt.Chunk,
+							Message: models.Message{ModelName: modelName},
+						})
+					case "tool_calls":
+						toolCalls = evt.ToolCalls
+						closed = true // stop reading, we got tool calls
+						// Drain remaining events
+						go func() { for range chunkChan {} }()
+					case "done":
+						if fullText.Len() == 0 && evt.Text != "" {
+							fullText.WriteString(evt.Text)
+						}
+						closed = true
+					case "error":
+						state.BroadcastEvent(evt)
+						closed = true
+					}
+				}
+			}
+
+			if len(toolCalls) > 0 {
+				slog.Info("executing tools", "count", len(toolCalls))
+				for _, tc := range toolCalls {
+					state.BroadcastEvent(models.StreamEvent{
+						Type: "status",
+						Text: "Running: " + tc.Function.Name,
+					})
+
+					var args map[string]any
+					json.Unmarshal([]byte(tc.Function.Arguments), &args)
+
+					result, execErr := tools.Execute(tc.Function.Name, args)
+					content := result
+					if execErr != nil {
+						content = "Error: " + execErr.Error()
+					}
+
+					msgs = append(msgs, models.ChatMessage{
+						Role: "assistant",
+						ToolCalls: []models.ToolCall{{
+							ID: tc.ID, Type: "function",
+							Function: models.ToolCallFunction{Name: tc.Function.Name, Arguments: tc.Function.Arguments},
+						}},
+					})
+					msgs = append(msgs, models.ChatMessage{
+						Role:       "tool",
+						ToolCallID: tc.ID,
+						Content:    content,
+					})
+
+					if len(content) > 200 {
+						content = content[:200]
+					}
+					state.BroadcastEvent(models.StreamEvent{
+						Type:    "status",
+						Text:    "Result: " + tc.Function.Name,
+						Message: models.Message{Content: content},
+					})
+				}
+
+				if fullText.Len() > 0 {
+					state.AddMessage(models.Message{
+						ID: generateID(), Role: models.RoleModel,
+						ModelName: modelName, Content: fullText.String(),
+						Status: models.StatusComplete,
+					})
+				}
+
+				fullText.Reset()
+				toolCalls = nil
+				state.BroadcastEvent(models.StreamEvent{Type: "status", Text: "Continuing..."})
+				continue
+			}
+
+			// Text response
+			if fullText.Len() > 0 {
+				state.AddMessage(models.Message{
+					ID: generateID(), Role: models.RoleModel,
+					ModelName: modelName, Content: fullText.String(),
+					Status: models.StatusComplete,
+				})
+				state.BroadcastEvent(models.StreamEvent{
+					Type: "done",
+					Message: models.Message{
+						ModelName: modelName, Content: fullText.String(),
+						Status: models.StatusComplete,
+					},
+				})
+			}
+			break
+		}
 	}
+}
+
+func buildConversation(state *ConversationState, mc models.ModelConfig, cfg config.Config, modelConfigs map[string]models.ModelConfig) []models.ChatMessage {
+	var msgs []models.ChatMessage
+
+	sysPrompt := hubSystemPrompt(mc.Name, modelConfigs, cfg.DefaultModel)
+	sysPrompt += "\nYou have access to tools. Use them to help the user. When you call a tool, no need to explain — just call it. The tool result will be fed back to you automatically."
+	msgs = append(msgs, models.ChatMessage{Role: "system", Content: sysPrompt})
+
+	sessionID := state.GetActiveSessionID()
+	history := state.GetMessages(sessionID)
+	for _, msg := range history {
+		if msg.Role == models.RoleUser {
+			msgs = append(msgs, models.ChatMessage{Role: "user", Content: msg.Content})
+		} else if msg.Role == models.RoleModel {
+			msgs = append(msgs, models.ChatMessage{Role: "assistant", Content: msg.Content})
+		}
+	}
+	return msgs
 }
 
 func buildModelConfigs(cfg config.Config) map[string]models.ModelConfig {
@@ -53,7 +183,7 @@ func buildModelConfigs(cfg config.Config) map[string]models.ModelConfig {
 	for name, mdef := range cfg.Models {
 		apiKey := mdef.ResolveAPIKey()
 		if apiKey == "" {
-			slog.Warn("model %q has no API key (set %s), skipping", name, mdef.APIKeyEnv)
+			slog.Warn("model %q has no API key", name)
 			continue
 		}
 		mc[name] = models.NewModelConfig(name, apiKey, mdef.BaseURL, mdef.Type, mdef.ModelName, mdef.APIKeyEnv)
