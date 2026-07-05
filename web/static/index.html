@@ -13,13 +13,13 @@ body { display: flex; }
 /* ── Sidebar ───────────────────────────────── */
 #sidebar { width: 240px; min-width: 240px; background: #060608; color: #909098; display: flex; flex-direction: column; border-right: 1px solid #1a1a1c; }
 #sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 16px 12px; }
-#sidebar-header h2 { font-size: 10px; font-weight: 700; color: #a78bfa; text-transform: uppercase; letter-spacing: 1.5px; }
+#sidebar-header h2 { font-size: 10px; font-weight: 700; color: #5cff3e; text-transform: uppercase; letter-spacing: 1.5px; }
 #settings-gear { background: none; border: none; color: #7c7ca0; cursor: pointer; font-size: 15px; padding: 4px 8px; border-radius: 6px; transition: .15s; }
-#settings-gear:hover { color: #a78bfa; background: #121216; }
+#settings-gear:hover { color: #5cff3e; background: #121216; }
 #session-list { flex: 1; overflow-y: auto; padding: 6px 10px; }
 .session-item { padding: 9px 14px; cursor: pointer; border-radius: 8px; font-size: 13px; margin-bottom: 2px; display: flex; align-items: center; justify-content: space-between; color: #9898a8; transition: .15s; }
 .session-item:hover { background: #101014; }
-.session-item.active { background: #7c3aed; color: #fff; box-shadow: 0 0 12px rgba(124,58,237,.4); }
+.session-item.active { background: #39ff14; color: #fff; box-shadow: 0 0 12px rgba(57,255,20,.4); }
 .session-item .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
 .session-item .name:hover { background: rgba(255,255,255,.04); }
 .session-item .name.editing { background: #1c1c22; color: #e8e8f0; outline: none; }
@@ -27,7 +27,7 @@ body { display: flex; }
 .session-item:hover .del { opacity: 1; }
 .session-item .del:hover { color: #ef4444; background: rgba(239,68,68,.1); }
 #new-session-btn { margin: 10px 10px 12px; padding: 10px; border: 1px dashed #2a2a2e; border-radius: 8px; background: transparent; color: #7878a0; cursor: pointer; font-size: 12px; transition: .15s; }
-#new-session-btn:hover { border-color: #7c3aed; color: #a78bfa; background: #0c0c12; }
+#new-session-btn:hover { border-color: #39ff14; color: #5cff3e; background: #0c0c12; }
 
 /* ── Main area ─────────────────────────────── */
 #main { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #0a0a0a; }
@@ -45,13 +45,13 @@ body { display: flex; }
 .msg { margin-bottom: 20px; max-width: 780px; animation: fadeIn .2s ease; }
 @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
 .msg.user { display: flex; justify-content: flex-end; }
-.msg.user .bubble { background: linear-gradient(135deg, #7c3aed, #6d28d9); color: #fff; border-radius: 16px 16px 4px 16px; box-shadow: 0 0 16px rgba(124,58,237,.35); }
+.msg.user .bubble { background: linear-gradient(135deg, #39ff14, #2ecc0e); color: #fff; border-radius: 16px 16px 4px 16px; box-shadow: 0 0 16px rgba(57,255,20,.35); }
 .msg.model .bubble { background: #0e0e14; color: #c8c8d0; border-radius: 16px 16px 16px 4px; border: 1px solid #1c1c24; }
 .msg.system .bubble { background: #141410; color: #ca8a04; border-radius: 10px; text-align: center; font-size: 11px; border: 1px solid #2a2a14; }
 .msg.error .bubble { background: #16080e; color: #ef4444; border-radius: 10px; border: 1px solid #2a1414; }
 .bubble { padding: 14px 18px; font-size: 14px; line-height: 1.65; word-wrap: break-word; }
 .bubble pre { background: #060608; border: 1px solid #1c1c24; border-radius: 8px; padding: 12px; overflow-x: auto; font-size: 12px; margin: 10px 0; color: #b8b8c8; }
-.bubble code { background: #121218; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #a78bfa; }
+.bubble code { background: #121218; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #5cff3e; }
 .model-label { font-size: 11px; font-weight: 600; color: #787890; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
 .model-label .indicator { width: 6px; height: 6px; border-radius: 50%; }
 .model-label .indicator.active { background: #f59e0b; animation: pulse 1.2s infinite; }
@@ -63,9 +63,9 @@ body { display: flex; }
 #input-area { padding: 16px 28px; background: #0c0c10; border-top: 1px solid #1a1a1c; }
 #input-box { padding: 12px 16px; border: 1px solid #222226; border-radius: 10px; font-size: 14px; outline: none; width: 100%; transition: .15s; background: #060608; color: #c8c8d0; }
 #input-box::placeholder { color: #585860; }
-#input-box:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,.2); }
-#send-btn { padding: 10px 22px; background: #7c3aed; color: #fff; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: .15s; }
-#send-btn:hover { background: #8b5cf6; box-shadow: 0 0 16px rgba(124,58,237,.5); }
+#input-box:focus { border-color: #39ff14; box-shadow: 0 0 0 3px rgba(57,255,20,.2); }
+#send-btn { padding: 10px 22px; background: #39ff14; color: #fff; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: .15s; }
+#send-btn:hover { background: #4dff2e; box-shadow: 0 0 16px rgba(57,255,20,.5); }
 #send-btn:disabled { background: #1c1c22; cursor: default; box-shadow: none; color: #585860; }
 
 /* ── Stats bar ─────────────────────────────── */
@@ -86,17 +86,17 @@ body { display: flex; }
 #settings-panel .close { float: right; background: none; border: none; font-size: 20px; cursor: pointer; color: #585860; padding: 0; line-height: 1; }
 #settings-panel .close:hover { color: #c8c8d0; }
 .stab { color: #7070a0; text-decoration: none; padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; transition: .15s; }
-.stab:hover { color: #a78bfa; background: #121218; }
-.stab.active { color: #a78bfa; font-weight: 600; background: #16161e; }
+.stab:hover { color: #5cff3e; background: #121218; }
+.stab.active { color: #5cff3e; font-weight: 600; background: #16161e; }
 
 /* ── Buttons & Forms ───────────────────────── */
 #stat-compact { padding: 4px 12px !important; background: #121218 !important; border: 1px solid #222226 !important; border-radius: 8px !important; cursor: pointer !important; font-size: 11px !important; color: #888898 !important; transition: .15s; }
-#stat-compact:hover { background: #1c1c24 !important; color: #a78bfa !important; }
+#stat-compact:hover { background: #1c1c24 !important; color: #5cff3e !important; }
 #yolo-toggle { font-size: 11px; color: #888898; }
 .git-form input { width: 100%; padding: 8px 10px; border: 1px solid #222226; border-radius: 8px; font-size: 13px; background: #060608; color: #c8c8d0; }
-.git-form input:focus { outline: none; border-color: #7c3aed; }
-.git-form button { padding: 8px 16px; background: #7c3aed; color: #fff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
-.git-form button:hover { background: #8b5cf6; }
+.git-form input:focus { outline: none; border-color: #39ff14; }
+.git-form button { padding: 8px 16px; background: #39ff14; color: #fff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.git-form button:hover { background: #4dff2e; }
 </style>
 </head>
 <body>
@@ -120,7 +120,11 @@ body { display: flex; }
       <input type="checkbox" id="yolo-cb"> YOLO
     </label>
     <div id="model-dots"></div>
-    <span id="header-activity" style="font-size:11px;color:#666;margin-left:8px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    <span style="font-size:11px;color:#787890;margin-left:4px">Review:</span>
+    <select id="review-model-select" style="font-size:11px;padding:3px 6px;border:1px solid #222226;border-radius:6px;background:#0a0a0c;color:#c8c8d0;outline:none;cursor:pointer" onchange="setRole('review',this.value)"></select>
+    <span style="font-size:11px;color:#787890;margin-left:4px">Build:</span>
+    <select id="implement-model-select" style="font-size:11px;padding:3px 6px;border:1px solid #222226;border-radius:6px;background:#0a0a0c;color:#c8c8d0;outline:none;cursor:pointer" onchange="setRole('implement',this.value)"></select>
+    <span id="header-activity" style="font-size:11px;color:#787890;margin-left:8px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
     <span id="header-balance" style="font-size:11px;color:#999;margin-left:auto"></span>
   </div>
   <div id="messages"></div>
@@ -175,7 +179,7 @@ body { display: flex; }
     </div>
     <div style="padding:10px 16px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:8px">
       <button id="approval-deny" style="padding:6px 14px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;font-size:12px">Deny</button>
-      <button id="approval-accept" style="padding:6px 14px;background:#4a6fa5;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px">Accept</button>
+      <button id="approval-accept" style="padding:6px 14px;background:#39ff14;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px">Accept</button>
     </div>
   </div>
 </div>
@@ -308,6 +312,29 @@ modelSelect.addEventListener('change', () => {
     body: JSON.stringify({model})
   });
 });
+
+function setRole(role, model) {
+  // Store role preference (client-side for now)
+  localStorage.setItem('hub-role-' + role, model);
+}
+function populateRoleSelects(models) {
+  const review = localStorage.getItem('hub-role-review') || 'deepseek-pro';
+  const impl = localStorage.getItem('hub-role-implement') || 'mimo-pro';
+  ['review-model-select','implement-model-select'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = '';
+    models.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.name; opt.textContent = m.name;
+      sel.appendChild(opt);
+    });
+  });
+  const rs = document.getElementById('review-model-select');
+  const is = document.getElementById('implement-model-select');
+  if (rs) rs.value = models.find(m=>m.name===review) ? review : (models[0]?.name||'');
+  if (is) is.value = models.find(m=>m.name===impl) ? impl : (models[0]?.name||'');
+}
 
 function populateModelSelect(models, defaultModel) {
   const current = modelSelect.value;
@@ -725,7 +752,7 @@ yoloCb.addEventListener('change', () => {
 fetch('/api/models').then(r => r.json()).then(data => {
   if (data && data.models) {
     modelDots.innerHTML = data.models.map(m => `<span class="model-indicator"><span class="model-dot ${m.status === 'configured' ? '' : 'offline'}"></span>${escapeHtml(m.name)}</span>`).join('');
-    populateModelSelect(data.models, data.default_model);
+    populateModelSelect(data.models, data.default_model); populateRoleSelects(data.models);
   }
 });
 
