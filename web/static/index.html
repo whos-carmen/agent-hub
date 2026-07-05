@@ -42,7 +42,7 @@ body { display: flex; }
 .model-dot.offline { background: #484850; }
 
 /* ── Messages ──────────────────────────────── */
-#messages { flex: 1; overflow-y: auto; padding: 24px 0; background: #000; display: flex; flex-direction: column; align-items: center; }
+#messages { flex: 1; overflow-y: auto; padding: 20px 0 0; background: #000; }
 .msg { margin-bottom: 20px; max-width: 100%; animation: fadeIn .2s ease; }
 @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
 .msg.user { display: flex; justify-content: flex-end; }
@@ -61,7 +61,7 @@ body { display: flex; }
 .model-label .indicator.error { background: #ef4444; }
 
 /* ── Input ─────────────────────────────────── */
-#input-area { padding: 16px 28px; background: #080808; border-top: 1px solid #222; max-width: 900px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+#input-area { padding: 20px 28px 24px; background: #000; border-top: 1px solid #1a1a1a; box-sizing: border-box; }
 #input-box { color-scheme: dark; padding: 14px 18px; border: 1px solid #222; border-radius: 12px; font-size: 14px; outline: none; width: 100%; transition: .15s; background: #020202; color: #c8c8d0; }
 #input-box::placeholder { color: #686878; }
 #input-box:focus { border-color: #39ff14; box-shadow: 0 0 0 3px rgba(57,255,20,.2); }
