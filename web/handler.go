@@ -5,8 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
+	"os"
+	"os/exec"
+	"runtime"
+	"strings"
 	"sync"
+	"time"
 
 	_ "embed"
 
@@ -17,7 +23,6 @@ import (
 //go:embed static/index.html
 var _indexHTML string
 
-// Server handles both the web UI and API endpoints.
 type Server struct {
 	state   *engine.ConversationState
 	subs    *SSESubscriber
@@ -25,7 +30,6 @@ type Server struct {
 	server  *http.Server
 }
 
-// NewServer creates a new web server.
 func NewServer(state *engine.ConversationState, port int) *Server {
 	return &Server{
 		state: state,
@@ -34,7 +38,6 @@ func NewServer(state *engine.ConversationState, port int) *Server {
 	}
 }
 
-// Start begins serving HTTP requests on 0.0.0.0.
 func (s *Server) Start() error {
 	mux := http.NewServeMux()
 
@@ -44,12 +47,15 @@ func (s *Server) Start() error {
 	mux.HandleFunc("GET /api/models", s.handleGetModels)
 	mux.HandleFunc("GET /api/stream", s.handleSSE)
 
-	// Session management
 	mux.HandleFunc("GET /api/sessions", s.handleGetSessions)
 	mux.HandleFunc("POST /api/sessions", s.handleCreateSession)
 	mux.HandleFunc("DELETE /api/sessions/{id}", s.handleDeleteSession)
 	mux.HandleFunc("PUT /api/sessions/{id}", s.handleRenameSession)
 	mux.HandleFunc("GET /api/sessions/{id}/messages", s.handleGetSessionMessages)
+
+	mux.HandleFunc("GET /api/system", s.handleGetSystem)
+	mux.HandleFunc("GET /api/git", s.handleGetGit)
+	mux.HandleFunc("POST /api/git/config", s.handleSetGitConfig)
 
 	addr := fmt.Sprintf("0.0.0.0:%d", s.port)
 	slog.Info("web server starting", "addr", addr)
@@ -57,7 +63,6 @@ func (s *Server) Start() error {
 	return s.server.ListenAndServe()
 }
 
-// Shutdown gracefully shuts down the server.
 func (s *Server) Shutdown(ctx context.Context) error {
 	if s.server != nil {
 		return s.server.Shutdown(ctx)
@@ -65,7 +70,6 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-// Broadcast starts forwarding state.Broadcast events to SSE subscribers.
 func (s *Server) Broadcast() {
 	for evt := range s.state.Broadcast {
 		s.subs.Send(evt)
@@ -97,8 +101,7 @@ func (s *Server) handleGetSessionMessages(w http.ResponseWriter, r *http.Request
 }
 
 func (s *Server) handleSend(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB limit
-
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req struct {
 		Content string `json:"content"`
 	}
@@ -110,7 +113,6 @@ func (s *Server) handleSend(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "content required", http.StatusBadRequest)
 		return
 	}
-
 	select {
 	case s.state.Input <- req.Content:
 		w.Header().Set("Content-Type", "application/json")
@@ -134,12 +136,52 @@ func (s *Server) handleGetModels(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(models)
 }
 
+func (s *Server) handleGetSystem(w http.ResponseWriter, r *http.Request) {
+	hostname, _ := os.Hostname()
+	info := map[string]interface{}{
+		"hostname":    hostname,
+		"platform":    runtime.GOOS + "/" + runtime.GOARCH,
+		"server_time": time.Now().Format("2006-01-02 15:04:05"),
+		"ip":          getLocalIP(),
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(info)
+}
+
+func (s *Server) handleGetGit(w http.ResponseWriter, r *http.Request) {
+	resp := map[string]interface{}{
+		"user_name":  runCmd("git", "config", "--global", "user.name"),
+		"user_email": runCmd("git", "config", "--global", "user.email"),
+		"gh_auth":    checkGhAuth(),
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+
+func (s *Server) handleSetGitConfig(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if req.Name != "" {
+		exec.Command("git", "config", "--global", "user.name", req.Name).Run()
+	}
+	if req.Email != "" {
+		exec.Command("git", "config", "--global", "user.email", req.Email).Run()
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) handleGetSessions(w http.ResponseWriter, r *http.Request) {
 	sessions := s.state.GetSessions()
 	activeID := s.state.GetActiveSessionID()
 	resp := struct {
 		Sessions []*engine.Session `json:"sessions"`
-		Active   string           `json:"active"`
+		Active   string            `json:"active"`
 	}{Sessions: sessions, Active: activeID}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
@@ -154,10 +196,7 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 		req.Name = fmt.Sprintf("Chat %d", len(s.state.GetSessions())+1)
 	}
 	sess := s.state.CreateSession(req.Name)
-
-	// Notify SSE clients of session switch
 	s.subs.Send(models.StreamEvent{Type: "session_switched", Text: sess.ID})
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(sess)
 }
@@ -193,17 +232,13 @@ func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "streaming not supported", http.StatusInternalServerError)
 		return
 	}
-
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-
 	ch := s.subs.Subscribe()
 	defer s.subs.Unsubscribe(ch)
-
 	fmt.Fprintf(w, "event: connected\ndata: {}\n\n")
 	flusher.Flush()
-
 	ctx := r.Context()
 	for {
 		select {
@@ -220,7 +255,6 @@ func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// SSESubscriber manages SSE client connections.
 type SSESubscriber struct {
 	mu      sync.RWMutex
 	clients map[chan models.StreamEvent]struct{}
@@ -256,4 +290,40 @@ func (s *SSESubscriber) Send(evt models.StreamEvent) {
 		default:
 		}
 	}
+}
+
+// ─── helpers ────────────────────────────────────────────
+
+func getLocalIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "unknown"
+	}
+	for _, a := range addrs {
+		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
+			return ipnet.IP.String()
+		}
+	}
+	return "unknown"
+}
+
+func runCmd(name string, args ...string) string {
+	cmd := exec.Command(name, args...)
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+func checkGhAuth() string {
+	out, err := exec.Command("gh", "auth", "status").CombinedOutput()
+	if err != nil {
+		return "not logged in"
+	}
+	o := string(out)
+	if strings.Contains(o, "Logged in") {
+		return "logged in"
+	}
+	return "not logged in"
 }

@@ -75,6 +75,15 @@ body { display: flex; background: #f0f2f5; color: #333; }
 #settings-panel .row .value { color: #333; font-weight: 500; }
 #settings-panel .close { float: right; background: none; border: none; font-size: 20px; cursor: pointer; color: #999; padding: 0; line-height: 1; }
 #settings-panel .close:hover { color: #333; }
+.stab { color: #999; text-decoration: none; padding: 3px 8px; border-radius: 3px; font-size: 12px; cursor: pointer; }
+.stab:hover { color: #333; background: #f3f4f6; }
+.stab.active { color: #4a6fa5; font-weight: 600; background: #e8f0fe; }
+.git-form { margin-top: 8px; }
+.git-form input { width: 100%; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 13px; margin-bottom: 6px; box-sizing: border-box; }
+.git-form input:focus { outline: none; border-color: #4a6fa5; }
+.git-form button { padding: 6px 12px; background: #4a6fa5; color: #fff; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; }
+.git-form button:hover { background: #3b5d8a; }
+.git-status { font-size: 12px; color: #666; margin-bottom: 4px; }
 </style>
 </head>
 <body>
@@ -107,11 +116,16 @@ body { display: flex; background: #f0f2f5; color: #333; }
 
 <div id="settings-overlay">
   <div id="settings-panel">
-    <h2>Settings <button class="close" id="settings-close">×</button></h2>
-    <div class="body" id="settings-body">
-      <div class="row"><span class="label">Default model</span><span class="value" id="s-default-model">—</span></div>
-      <div class="row"><span class="label">Port</span><span class="value" id="s-port">—</span></div>
-    </div>
+    <h2>
+      <span id="settings-title">Settings</span>
+      <span id="settings-tabs" style="font-size:12px;font-weight:400;margin-left:12px">
+        <a href="#" class="stab active" data-tab="models">Models</a>
+        <a href="#" class="stab" data-tab="system">System</a>
+        <a href="#" class="stab" data-tab="git">Git</a>
+      </span>
+      <button class="close" id="settings-close">×</button>
+    </h2>
+    <div class="body" id="settings-body"></div>
   </div>
 </div>
 
@@ -380,24 +394,91 @@ inputForm.addEventListener('submit', e => {
 });
 
 // ─── Settings ────────────────────────────────────────────
+let currentTab = 'models';
+
 settingsGear.addEventListener('click', () => {
-  // Fetch config info from a simple endpoint
-  fetchJSON('/api/models').then(models => {
-    let html = '';
-    if (models) {
-      models.forEach(m => {
-        html += `<div class="row"><span class="label">${escapeHtml(m.name)}</span><span class="value">${escapeHtml(m.status)}</span></div>`;
-      });
-    }
-    html += `<div class="row"><span class="label">Hub version</span><span class="value">v0.1.0</span></div>`;
-    document.querySelector('#settings-body .row')?.remove();
-    settingsBody.innerHTML = html + '<div style="margin-top:12px;font-size:11px;color:#999">Double-click a chat name to rename it.</div>';
-    settingsOverlay.classList.add('open');
-  });
+  settingsOverlay.classList.add('open');
+  switchTab('models');
 });
 
 settingsClose.addEventListener('click', () => settingsOverlay.classList.remove('open'));
 settingsOverlay.addEventListener('click', e => { if (e.target === settingsOverlay) settingsOverlay.classList.remove('open'); });
+
+document.addEventListener('click', e => {
+  const tab = e.target.closest('.stab');
+  if (tab) { e.preventDefault(); switchTab(tab.dataset.tab); }
+});
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.stab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  if (tab === 'models') renderModelsTab();
+  else if (tab === 'system') renderSystemTab();
+  else if (tab === 'git') renderGitTab();
+}
+
+function renderModelsTab() {
+  settingsBody.innerHTML = '<div class="row"><span class="label">Loading...</span></div>';
+  fetchJSON('/api/models').then(models => {
+    if (!models) { settingsBody.innerHTML = '<div class="row"><span class="label">Error loading models</span></div>'; return; }
+    let html = '';
+    models.forEach(m => { html += '<div class="row"><span class="label">' + escapeHtml(m.name) + '</span><span class="value">' + escapeHtml(m.status) + '</span></div>'; });
+    html += '<div style="margin-top:12px;font-size:11px;color:#999">Double-click a chat name to rename it.</div>';
+    settingsBody.innerHTML = html;
+  });
+}
+
+function renderSystemTab() {
+  settingsBody.innerHTML = '<div class="row"><span class="label">Loading...</span></div>';
+  fetchJSON('/api/system').then(info => {
+    if (!info) { settingsBody.innerHTML = '<div class="row"><span class="label">Error loading system info</span></div>'; return; }
+    settingsBody.innerHTML = '';
+    addSettingRow('Hostname', info.hostname || '—');
+    addSettingRow('IP', info.ip || '—');
+    addSettingRow('Platform', info.platform || '—');
+    addSettingRow('Server time', info.server_time || '—');
+  });
+}
+
+function addSettingRow(label, value) {
+  settingsBody.innerHTML += '<div class="row"><span class="label">' + escapeHtml(label) + '</span><span class="value">' + escapeHtml(value) + '</span></div>';
+}
+
+function renderGitTab() {
+  settingsBody.innerHTML = '<div class="row"><span class="label">Loading...</span></div>';
+  fetchJSON('/api/git').then(git => {
+    if (!git) { settingsBody.innerHTML = '<div class="row"><span class="label">Error loading git info</span></div>'; return; }
+    settingsBody.innerHTML = '';
+    addSettingRow('Git user', git.user_name || '(not set)');
+    addSettingRow('Git email', git.user_email || '(not set)');
+    addSettingRow('GitHub CLI', git.gh_auth || '—');
+    settingsBody.innerHTML += `
+      <div style="margin-top:12px">
+        <div class="git-status">Update git config:</div>
+        <div class="git-form">
+          <input id="git-name" placeholder="Name" value="${escapeHtml(git.user_name || '')}">
+          <input id="git-email" placeholder="Email" value="${escapeHtml(git.user_email || '')}">
+          <button onclick="saveGitConfig()">Save</button>
+          <span id="git-saved" style="display:none;margin-left:8px;font-size:12px;color:#10b981">Saved</span>
+        </div>
+      </div>`;
+  });
+}
+
+function saveGitConfig() {
+  const name = document.getElementById('git-name').value.trim();
+  const email = document.getElementById('git-email').value.trim();
+  fetch('/api/git/config', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({name, email})
+  }).then(r => {
+    if (r.ok) {
+      const span = document.getElementById('git-saved');
+      if (span) { span.style.display = 'inline'; setTimeout(() => { span.style.display = 'none'; }, 3000); }
+    }
+  });
+}
 
 // ─── Init ───────────────────────────────────────────────
 newSessionBtn.addEventListener('click', () => createSession(''));
