@@ -62,7 +62,7 @@ body { display: flex; }
 .model-label .indicator.error { background: #ef4444; }
 
 /* ── Input ─────────────────────────────────── */
-#input-area { padding: 16px 28px; background: #0c0c10; border-top: 1px solid #1a1a1c; }
+#input-area { padding: 16px 28px; background: #0c0c10; border-top: 1px solid #1a1a1c; max-width: 780px; margin: 0 auto; width: 100%; box-sizing: content-box; }
 #input-box { color-scheme: dark; padding: 12px 16px; border: 1px solid #222226; border-radius: 10px; font-size: 14px; outline: none; width: 100%; transition: .15s; background: #060608; color: #c8c8d0; }
 #input-box::placeholder { color: #585860; }
 #input-box:focus { border-color: #39ff14; box-shadow: 0 0 0 3px rgba(57,255,20,.2); }
@@ -71,7 +71,7 @@ body { display: flex; }
 #send-btn:disabled { background: #1c1c22; cursor: default; box-shadow: none; color: #585860; }
 
 /* ── Stats bar ─────────────────────────────── */
-#stats-bar { display: flex; gap: 8px; align-items: center; font-size: 11px; color: #787890; padding: 8px 0 0; flex-wrap: wrap; }
+#stats-bar { display: flex; gap: 8px; align-items: center; font-size: 11px; color: #787890; padding: 8px 0 0; flex-wrap: wrap; max-width: 780px; margin: 0 auto; }
 #stats-bar span { padding: 2px 10px; background: #121218; border-radius: 12px; white-space: nowrap; }
 
 /* ── Modals ────────────────────────────────── */
@@ -109,6 +109,10 @@ body { display: flex; }
   </div>
   <div id="session-list"></div>
   <button id="new-session-btn">+ New Chat</button>
+  <div id="activity-panel" style="padding:8px 12px 12px;border-top:1px solid #1a1a1c;font-size:11px;color:#787890">
+    <div style="font-size:10px;font-weight:700;color:#5cff3e;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Activity</div>
+    <div id="activity-list" style="display:flex;flex-direction:column;gap:4px"></div>
+  </div>
 </div>
 
 <div id="main">
@@ -534,6 +538,17 @@ evtSource.addEventListener('error', () => { reasoningEl = null; });
 evtSource.addEventListener('status', e => {
   const data = JSON.parse(e.data);
   document.getElementById('header-activity').textContent = data.text || '';
+  // Also update sidebar activity
+  const al = document.getElementById('activity-list');
+  if (al && data.text) {
+    const now = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    const item = document.createElement('div');
+    item.textContent = now + ' ' + data.text;
+    item.style.cssText = 'color:#888898;font-size:10px;padding:2px 0';
+    al.prepend(item);
+    // Keep only last 10
+    while (al.children.length > 10) al.lastChild.remove();
+  }
   const div = document.createElement('div'); div.className = 'msg system';
   div.innerHTML = `<div class="bubble">${escapeHtml(data.text || '')}</div>`;
   messagesEl.appendChild(div); scrollToBottom();
