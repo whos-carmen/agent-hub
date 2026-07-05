@@ -96,7 +96,13 @@ func (s *Server) Broadcast() {
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(_indexHTML))
+	// Read from disk so edits take effect without rebuild
+	data, err := os.ReadFile("web/static/index.html")
+	if err != nil {
+		w.Write([]byte(_indexHTML)) // fallback to embedded
+		return
+	}
+	w.Write(data)
 }
 
 func (s *Server) handleGetMessages(w http.ResponseWriter, r *http.Request) {
