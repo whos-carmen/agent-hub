@@ -37,7 +37,6 @@ body { display: flex; }
 /* ── Header ────────────────────────────────── */
 #header { padding: 12px 24px; background: #0c0c10; border-bottom: 1px solid #1a1a1c; display: flex; align-items: center; gap: 12px; min-height: 52px; }
 #header h1 { font-size: 16px; font-weight: 700; color: #e8e8f0; letter-spacing: -.3px; }
-#model-dots { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .model-indicator { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #a8a8b8; padding: 2px 8px; background: #121218; border-radius: 10px; }
 .model-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
 .model-dot.offline { background: #484850; }
@@ -128,7 +127,6 @@ body { display: flex; }
     <label id="yolo-toggle" style="display:flex;align-items:center;gap:4px;font-size:11px;color:#888898;cursor:pointer">
       <input type="checkbox" id="yolo-cb"> YOLO
     </label>
-    <div id="model-dots"></div>
     <span style="font-size:11px;color:#787890;margin-left:4px">Review:</span>
     <select id="review-model-select" style="font-size:11px;padding:3px 6px;border:1px solid #222226;border-radius:6px;background:#0a0a0c;color:#c8c8d0;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none" onchange="setRole('review',this.value)"></select>
     <span style="font-size:11px;color:#787890;margin-left:4px">Build:</span>
@@ -217,7 +215,6 @@ const sendBtn = document.getElementById('send-btn');
 const sessionList = document.getElementById('session-list');
 const newSessionBtn = document.getElementById('new-session-btn');
 const modelSelect = document.getElementById('model-select');
-const modelDots = document.getElementById('model-dots');
 const settingsGear = document.getElementById('settings-gear');
 const settingsOverlay = document.getElementById('settings-overlay');
 const settingsClose = document.getElementById('settings-close');
