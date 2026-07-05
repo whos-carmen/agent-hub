@@ -215,6 +215,8 @@ func (s *ConversationState) SetYOLO(on bool) {
 }
 
 // GetYOLO returns whether YOLO mode is active.
+
+
 func (s *ConversationState) GetYOLO() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

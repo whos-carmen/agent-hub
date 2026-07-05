@@ -510,12 +510,14 @@ const evtSource = new EventSource('/api/stream');
 evtSource.addEventListener('chunk', e => {
   document.getElementById('stop-btn').style.display = 'inline-block';
   sendBtn.disabled = true;
+  document.getElementById('header-activity').innerHTML = '<span style="color:#5cff3e">●</span> Generating…';
   const data = JSON.parse(e.data);
   addStreamingChunk(data.message?.model_name || data.message?.modelName || 'model', data.chunk || '');
 });
 evtSource.addEventListener('done', e => {
   document.getElementById('stop-btn').style.display = 'none';
   sendBtn.disabled = false;
+  document.getElementById('header-activity').textContent = '';
   const data = JSON.parse(e.data);
   finalizeModel(data.message || {});
 });
@@ -613,8 +615,16 @@ evtSource.onerror = function() {
 
 // ─── Input ──────────────────────────────────────────────
 document.getElementById('stop-btn').addEventListener('click', () => {
-  // Reload page to abort current SSE connection
-  location.reload();
+  // Close the SSE connection to abort streaming
+  evtSource.close();
+  document.getElementById('stop-btn').style.display = 'none';
+  sendBtn.disabled = false;
+  document.getElementById('header-activity').textContent = '';
+  document.getElementById('header-activity').textContent = '';
+  // Reconnect SSE after a moment
+  setTimeout(() => {
+    window.location.reload();
+  }, 500);
 });
 
 inputForm.addEventListener('submit', e => {
