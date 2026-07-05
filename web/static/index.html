@@ -328,22 +328,26 @@ function setRole(role, model) {
 }
 function populateRoleSelects(models) {
   if (!models || !models.length) return;
-  const review = localStorage.getItem('hub-role-review') || 'deepseek-pro';
-  const impl = localStorage.getItem('hub-role-implement') || 'mimo-pro';
   ['review-model-select','implement-model-select'].forEach(id => {
     const sel = document.getElementById(id);
     if (!sel) return;
+    const current = sel.value;
     sel.innerHTML = '';
     models.forEach(m => {
       const opt = document.createElement('option');
       opt.value = m.name; opt.textContent = m.name;
       sel.appendChild(opt);
     });
+    sel.value = current || '';
   });
+  const review = localStorage.getItem('hub-role-review');
+  const impl = localStorage.getItem('hub-role-implement');
   const rs = document.getElementById('review-model-select');
   const is = document.getElementById('implement-model-select');
-  if (rs) rs.value = models.find(m=>m.name===review) ? review : (models[0]?.name||'');
-  if (is) is.value = models.find(m=>m.name===impl) ? impl : (models[0]?.name||'');
+  if (rs) rs.value = (review && models.find(m=>m.name===review)) ? review : (models[0]?.name||'');
+  if (is) is.value = (impl && models.find(m=>m.name===impl)) ? impl : (models[0]?.name||'');
+  if (!review && rs) localStorage.setItem('hub-role-review', rs.value);
+  if (!impl && is) localStorage.setItem('hub-role-implement', is.value);
 }
 
 function populateModelSelect(models, defaultModel) {
