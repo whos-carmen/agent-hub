@@ -551,7 +551,11 @@ evtSource.addEventListener('error', () => { reasoningEl = null; });
 
 evtSource.addEventListener('status', e => {
   const data = JSON.parse(e.data);
-  document.getElementById('header-activity').textContent = data.text || '';
+  // Don't overwrite generating indicator
+  const ha = document.getElementById('header-activity');
+  if (!ha.innerHTML.includes('Generating')) {
+    ha.textContent = data.text || '';
+  }
   // Also update sidebar activity
   const al = document.getElementById('activity-list');
   if (al && data.text) {
