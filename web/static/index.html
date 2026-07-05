@@ -218,8 +218,7 @@ function loadMessages() {
 function switchSession(id) {
   if (id === activeSessionId) return;
   activeSessionId = id;
-  selectedFiles = [];
-  renderAttachedFiles();
+
   loadMessages();
   renderSessionList();
 }
@@ -267,72 +266,6 @@ function populateModelSelect(models, defaultModel) {
 }
 
 // ─── File browser ───────────────────────────────────────
-function uploadFile(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const status = document.getElementById('upload-status');
-  status.textContent = 'Uploading...';
-  const fd = new FormData();
-  fd.append('file', file);
-  fetch('/api/upload', { method: 'POST', body: fd })
-    .then(r => r.json())
-    .then(d => {
-      if (d.ok) { status.textContent = 'Uploaded: ' + d.path; input.value = ''; openFileBrowser(); }
-      else { status.textContent = 'Failed'; }
-    })
-    .catch(() => { status.textContent = 'Error'; });
-}
-
-function openFileBrowser() {
-  fileModal.style.display = 'flex';
-  fileList.innerHTML = '<div style="padding:12px;text-align:center;color:#999">Loading files...</div>';
-  fetchJSON('/api/files').then(files => {
-    allFiles = files || [];
-    renderFileList();
-  });
-}
-
-function renderFileList() {
-  if (!allFiles.length) {
-    fileList.innerHTML = '<div style="padding:12px;text-align:center;color:#999">No files found in projects directory</div>';
-    fileCount.textContent = '';
-    return;
-  }
-  fileList.innerHTML = '';
-  let checked = 0;
-  allFiles.forEach(f => {
-    const isSelected = selectedFiles.includes(f.name);
-    if (isSelected) checked++;
-    const row = document.createElement('label');
-    row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:3px;cursor:pointer';
-    row.innerHTML = '<input type="checkbox" class="file-cb" value="' + escapeHtml(f.name) + '"' + (isSelected ? ' checked' : '') + ' style="flex-shrink:0">' +
-      '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">' + escapeHtml(f.name) + '</span>' +
-      '<span style="font-size:11px;color:#999">' + (f.size > 1024 ? Math.round(f.size/1024) + 'KB' : f.size + 'B') + '</span>';
-    fileList.appendChild(row);
-  });
-  fileCount.textContent = checked + ' selected';
-}
-
-fileList.addEventListener('change', e => {
-  if (e.target.classList.contains('file-cb')) {
-    const checked = fileList.querySelectorAll('.file-cb:checked').length;
-    fileCount.textContent = checked + ' selected';
-  }
-});
-
-fileAttachBtn.addEventListener('click', () => {
-  selectedFiles = [];
-  fileList.querySelectorAll('.file-cb:checked').forEach(cb => selectedFiles.push(cb.value));
-  fileModal.style.display = 'none';
-  renderAttachedFiles();
-});
-
-fileModalClose.addEventListener('click', () => { fileModal.style.display = 'none'; });
-fileModal.addEventListener('click', e => { if (e.target === fileModal) fileModal.style.display = 'none'; });
-attachBtn.addEventListener('click', openFileBrowser);
-
-
-
 // ─── Render ─────────────────────────────────────────────
 
 function renderSessionList() {
