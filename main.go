@@ -1,16 +1,20 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"flag"
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/whos-carmen/agent-hub/config"
 	"github.com/whos-carmen/agent-hub/engine"
 	"github.com/whos-carmen/agent-hub/models"
@@ -37,6 +41,19 @@ func main() {
 
 	cfgPath := flag.String("config", "", "path to config file")
 	flag.Parse()
+
+	// First-run detection: if no config file and not running setup, prompt
+	if *cfgPath == "" {
+		home, _ := os.UserHomeDir()
+		defaultPath := filepath.Join(home, ".hub", "config.toml")
+		if _, err := os.Stat(defaultPath); os.IsNotExist(err) {
+			args := flag.Args()
+			if len(args) == 0 || args[0] != "setup" {
+				fmt.Fprintf(os.Stderr, "No config found at %s\n", defaultPath)
+				fmt.Fprintf(os.Stderr, "Run 'hub setup' to configure, or set HUB_CONFIG\n\n")
+			}
+		}
+	}
 
 	// Load config
 	cfg, err := resolveConfig(*cfgPath)
@@ -70,6 +87,8 @@ func main() {
 		runDiff(args[1:])
 	case "log":
 		runLog(args[1:])
+	case "setup":
+		os.Exit(runSetup())
 	case "version":
 		fmt.Println("agent-hub v0.1.0")
 	default:
@@ -320,4 +339,149 @@ func extractFlag(args []string, name string) string {
 		}
 	}
 	return ""
+}
+
+func runSetup() int {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Println("╔══════════════════════════════════════╗")
+	fmt.Println("║      agent-hub setup wizard          ║")
+	fmt.Println("╚══════════════════════════════════════╝")
+	fmt.Println()
+
+	home, _ := os.UserHomeDir()
+	configDir := filepath.Join(home, ".hub")
+	configPath := filepath.Join(configDir, "config.toml")
+
+	// Check if config already exists
+	if _, err := os.Stat(configPath); err == nil {
+		fmt.Printf("Config already exists at %s\n", configPath)
+		fmt.Print("Overwrite? (y/N): ")
+		resp, _ := reader.ReadString('\n')
+		resp = strings.TrimSpace(resp)
+		if resp != "y" && resp != "Y" {
+			fmt.Println("Aborted.")
+			return 0
+		}
+	}
+
+	os.MkdirAll(configDir, 0755)
+
+	cfg := config.Default()
+
+	// --- API Keys ---
+	fmt.Println()
+	fmt.Println("── API Keys ──")
+	fmt.Println("(leave blank to skip, set in environment later)")
+
+	for name := range cfg.Models {
+		mdef := cfg.Models[name]
+		current := mdef.ResolveAPIKey()
+		envVar := mdef.APIKeyEnv
+
+		prompt := fmt.Sprintf("  %s API key (%s)", name, envVar)
+		if current != "" {
+			prompt += fmt.Sprintf(" [current: %s...]", current[:min(8, len(current))])
+		}
+		prompt += ": "
+
+		fmt.Print(prompt)
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+
+		if input != "" {
+			// Write to .env file in config dir
+			envPath := filepath.Join(configDir, ".env")
+			f, err := os.OpenFile(envPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+			if err == nil {
+				fmt.Fprintf(f, "%s=%s\n", envVar, input)
+				f.Close()
+				fmt.Printf("  ✓ Saved to %s\n", envPath)
+			}
+		} else if current != "" {
+			fmt.Println("  (keeping existing)")
+		}
+	}
+
+	// --- Git config ---
+	fmt.Println()
+	fmt.Println("── Git Configuration ──")
+
+	gitName := ""
+	if out, err := exec.Command("git", "config", "--global", "user.name").Output(); err == nil {
+		gitName = strings.TrimSpace(string(out))
+	}
+	gitEmail := ""
+	if out, err := exec.Command("git", "config", "--global", "user.email").Output(); err == nil {
+		gitEmail = strings.TrimSpace(string(out))
+	}
+
+	if gitName == "" {
+		fmt.Print("  Git user name: ")
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+		if input != "" {
+			execCmd("git", "config", "--global", "user.name", input)
+			fmt.Println("  ✓ Set")
+		}
+	} else {
+		fmt.Printf("  Git user name: %s (already set)\n", gitName)
+	}
+
+	if gitEmail == "" {
+		fmt.Print("  Git email: ")
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
+		if input != "" {
+			execCmd("git", "config", "--global", "user.email", input)
+			fmt.Println("  ✓ Set")
+		}
+	} else {
+		fmt.Printf("  Git email: %s (already set)\n", gitEmail)
+	}
+
+	// --- Projects directory ---
+	fmt.Println()
+	fmt.Println("── Projects Directory ──")
+	fmt.Printf("  Default: %s\n", cfg.ProjectsDir)
+	fmt.Print("  Change it? (leave blank for default): ")
+	input, _ := reader.ReadString('\n')
+	input = strings.TrimSpace(input)
+	if input != "" {
+		cfg.ProjectsDir = input
+	}
+
+	// --- Write config ---
+	fmt.Println()
+	fmt.Println("── Writing Config ──")
+
+	f, err := os.Create(configPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating config: %v\n", err)
+		return 1
+	}
+	defer f.Close()
+
+	enc := toml.NewEncoder(f)
+	if err := enc.Encode(cfg); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing config: %v\n", err)
+		return 1
+	}
+
+	fmt.Printf("  ✓ Config written to %s\n", configPath)
+	fmt.Println()
+	fmt.Println("Setup complete! Run 'hub' to start.")
+	fmt.Println("API keys are stored in " + filepath.Join(configDir, ".env") + " — keep this file safe.")
+	return 0
+}
+
+func execCmd(name string, args ...string) {
+	cmd := exec.Command(name, args...)
+	cmd.Run()
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
