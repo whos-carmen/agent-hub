@@ -108,7 +108,7 @@ body { display: flex; }
   </div>
   <div id="session-list"></div>
   <button id="new-session-btn">+ New Chat</button>
-  <div id="activity-panel" style="padding:8px 12px 12px;border-top:1px solid #1a1a1c;font-size:11px;color:#787890">
+  <div id="activity-panel" style="display:none;padding:8px 12px 12px;border-top:1px solid #1a1a1c;font-size:11px;color:#787890">
     <div id="activity-list" style="display:flex;flex-direction:column;gap:4px"></div>
   </div>
 </div>
@@ -137,7 +137,7 @@ body { display: flex; }
       <div id="model-status-list"></div>
     </div>
   </div>
-  <div style="max-width:900px;margin:0 auto;width:100%"><div id="input-area">
+  <div id="input-area">
     <form id="input-form">
       <div style="display:flex;flex-direction:column;flex:1;gap:4px">
         <div style="display:flex;gap:6px;align-items:center">
@@ -549,6 +549,7 @@ evtSource.addEventListener('status', e => {
   // Also update sidebar activity
   const al = document.getElementById('activity-list');
   if (al && data.text) {
+    document.getElementById('activity-panel').style.display = 'block';
     const now = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
     const item = document.createElement('div');
     item.textContent = now + ' ' + data.text;
@@ -798,8 +799,8 @@ yoloCb.addEventListener('change', () => {
 
 fetch('/api/models').then(r => r.json()).then(data => {
   if (data && data.models) {
-    modelDots.innerHTML = data.models.map(m => `<span class="model-indicator"><span class="model-dot ${m.status === 'configured' ? '' : 'offline'}"></span>${escapeHtml(m.name)}</span>`).join('');
-    populateModelSelect(data.models, data.default_model); populateRoleSelects(data.models);
+    populateModelSelect(data.models, data.default_model);
+    populateRoleSelects(data.models);
   }
 });
 
