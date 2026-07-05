@@ -14,9 +14,17 @@ import (
 type Session struct {
 	ID        string           `json:"id"`
 	Name      string           `json:"name"`
-	Model     string           `json:"model,omitempty"`     // per-session model override
+	Model     string           `json:"model,omitempty"`
 	CreatedAt time.Time        `json:"created_at"`
 	Messages  []models.Message `json:"messages"`
+	Stats     SessionStats     `json:"stats"`
+}
+
+// SessionStats tracks usage over a conversation.
+type SessionStats struct {
+	TokensIn     int `json:"tokens_in"`
+	TokensOut    int `json:"tokens_out"`
+	Turns        int `json:"turns"`
 }
 
 // GetModel returns the session's model override, or the defaultModel if unset.
@@ -248,6 +256,41 @@ func (s *ConversationState) GetActiveSessionModel(defaultModel string) string {
 		return sess.GetModel(defaultModel)
 	}
 	return defaultModel
+}
+
+func (s *ConversationState) RecordUsage(tokensIn, tokensOut int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sess := s.getActiveSessionLocked()
+	if sess == nil { return }
+	sess.Stats.TokensIn += tokensIn
+	sess.Stats.TokensOut += tokensOut
+	sess.Stats.Turns++
+	s.maybeSaveLocked()
+}
+
+func (s *ConversationState) CompactSession(keepTurns int) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sess := s.getActiveSessionLocked()
+	if sess == nil { return 0 }
+	userIndices := []int{}
+	for i, msg := range sess.Messages {
+		if msg.Role == models.RoleUser { userIndices = append(userIndices, i) }
+	}
+	if len(userIndices) <= keepTurns { return 0 }
+	cutoff := userIndices[len(userIndices)-keepTurns]
+	sess.Messages = sess.Messages[cutoff:]
+	s.maybeSaveLocked()
+	return len(userIndices) - keepTurns
+}
+
+func (s *ConversationState) GetActiveSessionStats() SessionStats {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	sess := s.getActiveSessionLocked()
+	if sess != nil { return sess.Stats }
+	return SessionStats{}
 }
 
 // AddDispatch registers a new dispatch.

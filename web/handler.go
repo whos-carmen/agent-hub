@@ -67,6 +67,8 @@ func (s *Server) Start() error {
 	mux.HandleFunc("GET /api/system", s.handleGetSystem)
 	mux.HandleFunc("GET /api/balance", s.handleGetBalance)
 	mux.HandleFunc("GET /api/yolo", s.handleGetYOLO)
+	mux.HandleFunc("GET /api/stats", s.handleGetStats)
+	mux.HandleFunc("POST /api/compact", s.handleCompact)
 	mux.HandleFunc("PUT /api/yolo", s.handleSetYOLO)
 	mux.HandleFunc("POST /api/approve", s.handleApprove)
 	mux.HandleFunc("GET /api/git", s.handleGetGit)
@@ -220,6 +222,23 @@ func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Error(w, "approval not found", http.StatusNotFound)
+}
+
+func (s *Server) handleGetStats(w http.ResponseWriter, r *http.Request) {
+	stats := s.state.GetActiveSessionStats()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(stats)
+}
+
+func (s *Server) handleCompact(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		KeepTurns int `json:"keep_turns"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	if req.KeepTurns <= 0 { req.KeepTurns = 10 }
+	removed := s.state.CompactSession(req.KeepTurns)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int{"removed": removed})
 }
 
 func (s *Server) handleGetBalance(w http.ResponseWriter, r *http.Request) {

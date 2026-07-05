@@ -152,6 +152,7 @@ func RunLoop(state *ConversationState, cfg config.Config) {
 
 			// Text response
 			if fullText.Len() > 0 {
+				state.RecordUsage(0, len(fullText.String())/4) // rough token estimate
 				state.AddMessage(models.Message{
 					ID: generateID(), Role: models.RoleModel,
 					ModelName: modelName, Content: fullText.String(),

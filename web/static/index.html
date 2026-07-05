@@ -106,6 +106,7 @@ body { display: flex; background: #f0f2f5; color: #333; }
       <input type="checkbox" id="yolo-cb"> YOLO
     </label>
     <div id="model-dots"></div>
+    <span id="header-balance" style="font-size:11px;color:#999;margin-left:auto"></span>
   </div>
   <div id="messages"></div>
   <div id="input-area">
@@ -118,6 +119,11 @@ body { display: flex; background: #f0f2f5; color: #333; }
         
       </div>
     </form>
+    <div id="stats-bar" style="display:flex;gap:12px;align-items:center;font-size:11px;color:#999;margin-bottom:4px">
+      <span id="stat-turns">Turns: 0</span>
+      <span id="stat-tokens">Tokens: 0</span>
+      <span id="stat-compact" style="color:#999;cursor:pointer" title="Compact conversation to last 10 turns">⚡ Compact</span>
+    </div>
     <div id="status-bar">
       <span class="stat" id="stat-models"></span>
       <span class="stat" id="stat-session"></span>
@@ -629,6 +635,37 @@ function saveGitConfig() {
 
 // ─── Init ───────────────────────────────────────────────
 newSessionBtn.addEventListener('click', () => createSession(''));
+
+// Balance in header
+function refreshBalance() {
+  fetchJSON('/api/balance').then(b => {
+    if (b && b.deepseek) {
+      const m = b.deepseek.match(/^([\d.]+)/);
+      document.getElementById('header-balance').textContent = 'DS: $' + (m ? m[1] : '?');
+    }
+  });
+}
+refreshBalance();
+
+// Stats
+function refreshStats() {
+  fetchJSON('/api/stats').then(s => {
+    if (s) {
+      document.getElementById('stat-turns').textContent = 'Turns: ' + (s.turns || 0);
+      document.getElementById('stat-tokens').textContent = 'Tokens: ' + ((s.tokens_in||0)+(s.tokens_out||0));
+      const ratio = s.tokens_out > 0 ? Math.round(s.tokens_in / Math.max(s.tokens_out,1) * 100) : 0;
+      document.getElementById('stat-compact').textContent = 'Compact (' + (s.turns||0) + ' turns, ' + ratio + '% in/out)';
+    }
+  });
+}
+setInterval(refreshStats, 5000);
+refreshStats();
+
+document.getElementById('stat-compact').addEventListener('click', () => {
+  fetch('/api/compact', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({keep_turns: 10}) })
+    .then(r => r.json()).then(d => { refreshStats(); loadMessages(); });
+});
+setInterval(refreshBalance, 60000);
 
 // YOLO toggle
 const yoloCb = document.getElementById('yolo-cb');
