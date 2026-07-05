@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -51,6 +52,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("POST /api/send", s.handleSend)
 	mux.HandleFunc("GET /api/models", s.handleGetModels)
 	mux.HandleFunc("GET /api/files", s.handleGetFiles)
+	mux.HandleFunc("POST /api/upload", s.handleUpload)
 	mux.HandleFunc("GET /api/stream", s.handleSSE)
 
 	mux.HandleFunc("GET /api/sessions", s.handleGetSessions)
@@ -301,12 +303,24 @@ func (s *Server) handleGetFiles(w http.ResponseWriter, r *http.Request) {
 		root = "."
 	}
 
+	// Directories to skip entirely
+	skipDirs := map[string]bool{
+		".cache": true, ".config": true, ".local": true, ".npm": true,
+		".crosstalk": true, ".reasonix": true, ".mimocode": true,
+		".aws": true, ".ssh": true, ".git": true, "node_modules": true,
+		"go": true, "snap": true,
+	}
+
 	var files []map[string]interface{}
+	maxFiles := 500
 	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return nil // skip inaccessible
+			return nil
 		}
 		if info.IsDir() {
+			if skipDirs[info.Name()] && path != root {
+				return filepath.SkipDir
+			}
 			if strings.HasPrefix(info.Name(), ".") && path != root {
 				return filepath.SkipDir
 			}
@@ -314,6 +328,9 @@ func (s *Server) handleGetFiles(w http.ResponseWriter, r *http.Request) {
 		}
 		if strings.HasPrefix(info.Name(), ".") {
 			return nil
+		}
+		if len(files) >= maxFiles {
+			return filepath.SkipAll
 		}
 		rel, _ := filepath.Rel(root, path)
 		files = append(files, map[string]interface{}{
@@ -329,6 +346,49 @@ func (s *Server) handleGetFiles(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(files)
+}
+
+func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 50<<20) // 50MB limit
+
+	if err := r.ParseMultipartForm(50 << 20); err != nil {
+		http.Error(w, "too large or invalid form", http.StatusBadRequest)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "no file in form field 'file'", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	root := s.cfg.ProjectsDir
+	if root == "" {
+		root = "."
+	}
+	destPath := filepath.Join(root, header.Filename)
+
+	os.MkdirAll(filepath.Dir(destPath), 0755)
+	dst, err := os.Create(destPath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("create file: %v", err), http.StatusInternalServerError)
+		return
+	}
+	defer dst.Close()
+
+	written, err := io.Copy(dst, file)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("write file: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"ok":   true,
+		"path": header.Filename,
+		"size": written,
+	})
 }
 
 func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
