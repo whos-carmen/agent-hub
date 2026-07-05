@@ -370,7 +370,7 @@ function renderMessage(msg) {
     let streamingClass = (msg.status === 'streaming' || msg.status === 'pending') ? ' streaming' : '';
     div.className += streamingClass;
     div.innerHTML = `
-      <div class="model-label"><span class="indicator ${indicatorClass}"></span>${escapeHtml(msg.model_name || 'model')}</div>
+      <div class="model-label"><span class="indicator ${indicatorClass}"></span>${escapeHtml(msg.model_name || 'model')} <span style="font-size:10px;color:#999">${formatCost(msg)}</span></div>
       <div class="bubble">${renderContent(msg.content || '')}</div>`;
     if (indicatorClass === 'active' && msg.content) {
       streamingModel = { el: div.querySelector('.bubble'), text: msg.content || '' };
@@ -429,6 +429,12 @@ function finalizeModel(msg) {
     const indicator = el.querySelector('.indicator');
     if (indicator) indicator.className = 'indicator done';
   }
+}
+
+function formatCost(msg) {
+  if (msg.cost_fmt) return '· ' + msg.cost_fmt;
+  if (msg.tokens_in || msg.tokens_out) return '(' + (msg.tokens_in||0) + '+' + (msg.tokens_out||0) + 'tok)';
+  return '';
 }
 
 function updateStatusBar() {

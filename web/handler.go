@@ -102,8 +102,40 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGetMessages(w http.ResponseWriter, r *http.Request) {
 	sessionID := r.URL.Query().Get("session")
 	msgs := s.state.GetMessages(sessionID)
+	// Enrich with cost info
+	type msgWithCost struct {
+		models.Message
+		Cost    float64 `json:"cost"`
+		CostFmt string  `json:"cost_fmt,omitempty"`
+	}
+	var enriched []msgWithCost
+	// Find session model for pricing lookup
+	sessions := s.state.GetSessions()
+	var sessModel string
+	for _, sess := range sessions {
+		if sess.ID == sessionID || (sessionID == "" && sess.ID == s.state.GetActiveSessionID()) {
+			sessModel = sess.Model
+			if sessModel == "" { sessModel = s.cfg.DefaultModel }
+			break
+		}
+	}
+	mdef, hasPricing := s.cfg.Models[sessModel]
+	
+	for _, m := range msgs {
+		mc := msgWithCost{Message: m}
+		if m.Role == models.RoleModel && m.TokensIn+m.TokensOut > 0 && hasPricing {
+			mc.Cost = float64(m.TokensIn)/1_000_000*mdef.PriceIn + float64(m.TokensOut)/1_000_000*mdef.PriceOut
+			if mc.Cost < 0.01 {
+				mc.CostFmt = "<$0.01"
+			} else {
+				mc.CostFmt = fmt.Sprintf("$%.2f", mc.Cost)
+			}
+		}
+		enriched = append(enriched, mc)
+	}
+	if enriched == nil { enriched = []msgWithCost{} }
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(msgs)
+	json.NewEncoder(w).Encode(enriched)
 }
 
 func (s *Server) handleGetSessionMessages(w http.ResponseWriter, r *http.Request) {
@@ -269,6 +301,8 @@ func (s *Server) handleGetStats(w http.ResponseWriter, r *http.Request) {
 			total := stats.TokensIn + stats.TokensOut
 			resp.CtxPct = total * 100 / mdef.Context
 			resp.CtxFmt = fmt.Sprintf("%d%%", resp.CtxPct)
+		} else {
+			resp.CtxFmt = "0%"
 		}
 	}
 	

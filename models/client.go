@@ -340,7 +340,12 @@ func StreamChatWithTools(ctx context.Context, cfg ModelConfig, messages []ChatMe
 					}
 					chunkChan <- StreamEvent{Type: "tool_calls", Text: fullText.String(), ToolCalls: calls}
 				} else {
-					chunkChan <- StreamEvent{Type: "done", Text: fullText.String()}
+					tokensIn, tokensOut := 0, 0
+					if chunk.Usage != nil {
+						tokensIn = chunk.Usage.PromptTokens
+						tokensOut = chunk.Usage.CompletionTokens
+					}
+					chunkChan <- StreamEvent{Type: "done", Text: fullText.String(), TokensIn: tokensIn, TokensOut: tokensOut}
 				}
 			}
 		}

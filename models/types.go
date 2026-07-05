@@ -29,18 +29,22 @@ type Message struct {
 	ModelName string        `json:"model_name,omitempty"`
 	Status    MessageStatus `json:"status"`
 	CreatedAt time.Time     `json:"created_at"`
-	ParentID  string        `json:"parent_id,omitempty"`    // links to the user message that triggered this
-	DispatchID string       `json:"dispatch_id,omitempty"`  // groups parallel responses together
+	ParentID  string        `json:"parent_id,omitempty"`
+	DispatchID string       `json:"dispatch_id,omitempty"`
+	TokensIn  int           `json:"tokens_in,omitempty"`
+	TokensOut int           `json:"tokens_out,omitempty"`
 }
 
 // StreamEvent is pushed to UI subscribers as model responses arrive.
 type StreamEvent struct {
-	Type      string     `json:"type"` // "chunk" | "status" | "done" | "error" | "dispatch" | "tool_calls" | "approval_needed"
+	Type      string     `json:"type"`
 	Message   Message    `json:"message,omitempty"`
 	Chunk     string     `json:"chunk,omitempty"`
 	Text      string     `json:"text,omitempty"`
 	Error     string     `json:"error,omitempty"`
 	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+	TokensIn  int        `json:"tokens_in,omitempty"`
+	TokensOut int        `json:"tokens_out,omitempty"`
 }
 
 // DispatchPlan describes how the router decided to handle user input.

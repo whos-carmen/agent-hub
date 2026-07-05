@@ -166,11 +166,13 @@ func RunLoop(state *ConversationState, cfg config.Config) {
 
 			// Text response
 			if fullText.Len() > 0 {
-				state.RecordUsage(0, len(fullText.String())/4) // rough token estimate
+				// Get active session stats for token counts
+				stats := state.GetActiveSessionStats()
 				state.AddMessage(models.Message{
 					ID: generateID(), Role: models.RoleModel,
 					ModelName: modelName, Content: fullText.String(),
 					Status: models.StatusComplete,
+					TokensIn: stats.TokensIn, TokensOut: stats.TokensOut,
 				})
 				state.BroadcastEvent(models.StreamEvent{
 					Type: "done",
