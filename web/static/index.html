@@ -43,7 +43,7 @@ body { display: flex; }
 .model-dot.offline { background: #484850; }
 
 /* ── Messages ──────────────────────────────── */
-#messages { flex: 1; overflow-y: auto; padding: 24px 0; background: #0a0a0a; display: flex; flex-direction: column; align-items: center; }
+#messages { flex: 1; overflow-y: auto; padding: 24px 0; background: #0a0a0a; }
 .msg { margin-bottom: 20px; max-width: 100%; animation: fadeIn .2s ease; }
 @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
 .msg.user { display: flex; justify-content: flex-end; }
@@ -116,8 +116,6 @@ body { display: flex; }
 </div>
 
 <div id="main">
-  <div id="main-body" style="display:flex;flex:1;min-height:0">
-  <div id="main">
   <div id="header">
     <h1>agent-hub</h1>
     <select id="model-select" style="font-size:12px;padding:5px 10px;border:1px solid #222226;border-radius:8px;background:#0a0a0c;color:#c8c8d0;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none">
@@ -135,12 +133,13 @@ body { display: flex; }
     <span id="header-activity" style="font-size:11px;color:#787890;margin-left:8px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
     <span id="header-balance" style="font-size:11px;color:#787890;margin-left:auto"></span>
   </div>
-  <div id="messages"><div id="messages-inner" style="width:100%;max-width:900px;padding:0 28px;box-sizing:border-box"></div></div>
-  <div id="right-panel" style="width:200px;min-width:200px;background:#0c0c10;border-left:1px solid #1c1c24;padding:16px;overflow-y:auto;font-size:12px;color:#888898">
+  <div id="main-body" style="display:flex;flex:1;min-height:0">
+    <div id="messages"><div id="messages-inner" style="width:100%;max-width:900px;padding:0 28px;box-sizing:border-box;margin:0 auto"></div></div>
+    <div id="right-panel" style="width:200px;min-width:200px;background:#0c0c10;border-left:1px solid #1c1c24;padding:16px;overflow-y:auto;font-size:12px;color:#888898">
     <div style="font-size:10px;font-weight:700;color:#5cff3e;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Models</div>
     <div id="model-status-list"></div>
   </div>
-</div>
+  </div>
 </div>
 <div id="input-area">
     <form id="input-form">
