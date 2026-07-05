@@ -159,8 +159,12 @@ func (s *Server) handleGetModels(w http.ResponseWriter, r *http.Request) {
 	if list == nil {
 		list = []ModelInfo{}
 	}
+	resp := struct {
+		Models       []ModelInfo `json:"models"`
+		DefaultModel string      `json:"default_model"`
+	}{Models: list, DefaultModel: s.cfg.DefaultModel}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(list)
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (s *Server) handleGetSystem(w http.ResponseWriter, r *http.Request) {

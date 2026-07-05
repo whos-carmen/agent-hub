@@ -251,9 +251,9 @@ modelSelect.addEventListener('change', () => {
   });
 });
 
-function populateModelSelect(models) {
+function populateModelSelect(models, defaultModel) {
   const current = modelSelect.value;
-  modelSelect.innerHTML = '<option value="">(default)</option>';
+  modelSelect.innerHTML = '<option value="">(default: ' + escapeHtml(defaultModel || '?') + ')</option>';
   models.forEach(m => {
     const opt = document.createElement('option');
     opt.value = m.name;
@@ -491,7 +491,13 @@ evtSource.addEventListener('status', e => {
   messagesEl.appendChild(div); scrollToBottom();
 });
 evtSource.addEventListener('session_switched', () => loadSessionList());
-evtSource.addEventListener('model_switched', () => loadSessionList());
+evtSource.addEventListener('model_switched', () => {
+  fetchJSON('/api/sessions').then(data => {
+    if (!data) return;
+    const s = (data.sessions || []).find(x => x.id === data.active);
+    if (s) modelSelect.value = s.model || '';
+  });
+});
 evtSource.addEventListener('connected', () => {});
 evtSource.onerror = function() {
   let b = document.getElementById('sse-banner');
@@ -547,10 +553,10 @@ function switchTab(tab) {
 
 function renderModelsTab() {
   settingsBody.innerHTML = '<div class="row"><span class="label">Loading...</span></div>';
-  fetchJSON('/api/models').then(models => {
-    if (!models) { settingsBody.innerHTML = '<div class="row"><span class="label">Error loading models</span></div>'; return; }
+  fetchJSON('/api/models').then(data => {
+    if (!data || !data.models) { settingsBody.innerHTML = '<div class="row"><span class="label">Error loading models</span></div>'; return; }
     let html = '';
-    models.forEach(m => { html += '<div class="row"><span class="label">' + escapeHtml(m.name) + '</span><span class="value">' + escapeHtml(m.status) + '</span></div>'; });
+    data.models.forEach(m => { html += '<div class="row"><span class="label">' + escapeHtml(m.name) + '</span><span class="value">' + escapeHtml(m.status) + '</span></div>'; });
     html += '<div style="margin-top:12px;font-size:11px;color:#999">Set API keys via environment variables in the shell that runs hub.</div>';
     settingsBody.innerHTML = html;
   });
@@ -559,11 +565,11 @@ function renderModelsTab() {
 function renderConfigTab() {
   settingsBody.innerHTML = '<div class="row"><span class="label">Loading...</span></div>';
   fetchJSON('/api/system').then(sys => {
-    fetchJSON('/api/models').then(models => {
+    fetchJSON('/api/models').then(data => {
       settingsBody.innerHTML = '';
       addSettingRow('Projects dir', '~ (home)');
-      addSettingRow('Default model', models?.find(m => m.name === 'mimo-pro')?.name || 'mimo-pro');
-      addSettingRow('API keys', (models || []).filter(m => m.status === 'configured').length + '/' + (models || []).length + ' configured');
+      addSettingRow('Default model', data?.default_model || 'mimo-pro');
+      addSettingRow('API keys', (data?.models || []).filter(m => m.status === 'configured').length + '/' + (data?.models || []).length + ' configured');
       addSettingRow('Host', sys?.hostname || '—');
       addSettingRow('Port', '8080');
       settingsBody.innerHTML += '<div style="margin-top:12px;font-size:11px;color:#999">Edit ~/.hub/config.toml to change these settings.</div>';
@@ -626,11 +632,11 @@ function saveGitConfig() {
 // ─── Init ───────────────────────────────────────────────
 newSessionBtn.addEventListener('click', () => createSession(''));
 
-fetch('/api/models').then(r => r.json()).then(models => {
-  if (models) {
-    modelDots.innerHTML = models.map(m => `<span class="model-indicator"><span class="model-dot ${m.status === 'configured' ? '' : 'offline'}"></span>${escapeHtml(m.name)}</span>`).join('');
-    document.getElementById('stat-models').innerHTML = models.length + ' models';
-    populateModelSelect(models);
+fetch('/api/models').then(r => r.json()).then(data => {
+  if (data && data.models) {
+    modelDots.innerHTML = data.models.map(m => `<span class="model-indicator"><span class="model-dot ${m.status === 'configured' ? '' : 'offline'}"></span>${escapeHtml(m.name)}</span>`).join('');
+    document.getElementById('stat-models').innerHTML = data.models.length + ' models';
+    populateModelSelect(data.models, data.default_model);
   }
 });
 
