@@ -109,8 +109,6 @@ body { display: flex; }
   <div id="session-list"></div>
   <button id="new-session-btn">+ New Chat</button>
   <div id="activity-panel" style="padding:8px 12px 12px;border-top:1px solid #1a1a1c;font-size:11px;color:#787890">
-    <div style="font-size:10px;font-weight:700;color:#5cff3e;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Activity</div>
-    <div style="font-size:10px;font-weight:700;color:#5cff3e;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Activity</div>
     <div id="activity-list" style="display:flex;flex-direction:column;gap:4px"></div>
   </div>
 </div>
@@ -119,7 +117,7 @@ body { display: flex; }
   <div id="header">
     <h1>agent-hub</h1>
     <select id="model-select" style="font-size:12px;padding:5px 10px;border:1px solid #222226;border-radius:8px;background:#0a0a0c;color:#c8c8d0;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none">
-      <option value="">(default)</option>
+      <option value="">Default (mimo-pro)</option>
     </select>
     <button id="stat-compact" style="padding:3px 8px;background:#f3f4f6;border:1px solid #1a1a1c;border-radius:4px;cursor:pointer;font-size:11px;color:#888898" title="Summarize and compact conversation">Compact</button>
     <label id="yolo-toggle" style="display:flex;align-items:center;gap:4px;font-size:11px;color:#888898;cursor:pointer">
@@ -139,7 +137,7 @@ body { display: flex; }
       <div id="model-status-list"></div>
     </div>
   </div>
-  <div id="input-area">
+  <div style="max-width:900px;margin:0 auto;width:100%"><div id="input-area">
     <form id="input-form">
       <div style="display:flex;flex-direction:column;flex:1;gap:4px">
         <div style="display:flex;gap:6px;align-items:center">
@@ -173,6 +171,7 @@ body { display: flex; }
       <button id="delete-cancel" style="padding:8px 16px;background:#1c1c22;color:#c8c8d0;border:1px solid #333;border-radius:8px;cursor:pointer;font-size:12px">Cancel</button>
       <button id="delete-confirm" style="padding:8px 16px;background:#dc2626;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">Delete</button>
     </div>
+</div>
   </div>
 </div>
 
@@ -328,6 +327,7 @@ function setRole(role, model) {
   localStorage.setItem('hub-role-' + role, model);
 }
 function populateRoleSelects(models) {
+  if (!models || !models.length) return;
   const review = localStorage.getItem('hub-role-review') || 'deepseek-pro';
   const impl = localStorage.getItem('hub-role-implement') || 'mimo-pro';
   ['review-model-select','implement-model-select'].forEach(id => {
