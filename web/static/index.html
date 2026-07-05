@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en" class="h-full" style="color-scheme:dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,7 +11,7 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Sego
 body { display: flex; }
 
 /* ── Sidebar ───────────────────────────────── */
-#sidebar { width: 240px; min-width: 240px; background: #060608; color: #909098; display: flex; flex-direction: column; border-right: 1px solid #1a1a1c; }
+#sidebar { color-scheme: dark; width: 240px; min-width: 240px; background: #060608; color: #909098; display: flex; flex-direction: column; border-right: 1px solid #1a1a1c; }
 #sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 16px 12px; }
 #sidebar-header h2 { font-size: 10px; font-weight: 700; color: #5cff3e; text-transform: uppercase; letter-spacing: 1.5px; }
 #settings-gear { background: none; border: none; color: #7c7ca0; cursor: pointer; font-size: 15px; padding: 4px 8px; border-radius: 6px; transition: .15s; }
@@ -19,7 +19,7 @@ body { display: flex; }
 #session-list { flex: 1; overflow-y: auto; padding: 6px 10px; }
 .session-item { padding: 9px 14px; cursor: pointer; border-radius: 8px; font-size: 13px; margin-bottom: 2px; display: flex; align-items: center; justify-content: space-between; color: #9898a8; transition: .15s; }
 .session-item:hover { background: #101014; }
-.session-item.active { background: #39ff14; color: #fff; box-shadow: 0 0 12px rgba(57,255,20,.4); }
+.session-item.active { background: #39ff14; color: #0a0a0a box-shadow: 0 0 12px rgba(57,255,20,.4); }
 .session-item .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
 .session-item .name:hover { background: rgba(255,255,255,.04); }
 .session-item .name.editing { background: #1c1c22; color: #e8e8f0; outline: none; }
@@ -45,7 +45,7 @@ body { display: flex; }
 .msg { margin-bottom: 20px; max-width: 780px; animation: fadeIn .2s ease; }
 @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
 .msg.user { display: flex; justify-content: flex-end; }
-.msg.user .bubble { background: linear-gradient(135deg, #39ff14, #2ecc0e); color: #fff; border-radius: 16px 16px 4px 16px; box-shadow: 0 0 16px rgba(57,255,20,.35); }
+.msg.user .bubble { background: linear-gradient(135deg, #39ff14, #2ecc0e); color: #0a0a0a border-radius: 16px 16px 4px 16px; box-shadow: 0 0 16px rgba(57,255,20,.35); }
 .msg.model .bubble { background: #0e0e14; color: #c8c8d0; border-radius: 16px 16px 16px 4px; border: 1px solid #1c1c24; }
 .msg.system .bubble { background: #141410; color: #ca8a04; border-radius: 10px; text-align: center; font-size: 11px; border: 1px solid #2a2a14; }
 .msg.error .bubble { background: #16080e; color: #ef4444; border-radius: 10px; border: 1px solid #2a1414; }
@@ -61,10 +61,10 @@ body { display: flex; }
 
 /* ── Input ─────────────────────────────────── */
 #input-area { padding: 16px 28px; background: #0c0c10; border-top: 1px solid #1a1a1c; }
-#input-box { padding: 12px 16px; border: 1px solid #222226; border-radius: 10px; font-size: 14px; outline: none; width: 100%; transition: .15s; background: #060608; color: #c8c8d0; }
+#input-box { color-scheme: dark; padding: 12px 16px; border: 1px solid #222226; border-radius: 10px; font-size: 14px; outline: none; width: 100%; transition: .15s; background: #060608; color: #c8c8d0; }
 #input-box::placeholder { color: #585860; }
 #input-box:focus { border-color: #39ff14; box-shadow: 0 0 0 3px rgba(57,255,20,.2); }
-#send-btn { padding: 10px 22px; background: #39ff14; color: #fff; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: .15s; }
+#send-btn { padding: 10px 22px; background: #39ff14; color: #0a0a0a border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: .15s; }
 #send-btn:hover { background: #4dff2e; box-shadow: 0 0 16px rgba(57,255,20,.5); }
 #send-btn:disabled { background: #1c1c22; cursor: default; box-shadow: none; color: #585860; }
 
@@ -95,7 +95,7 @@ body { display: flex; }
 #yolo-toggle { font-size: 11px; color: #888898; }
 .git-form input { width: 100%; padding: 8px 10px; border: 1px solid #222226; border-radius: 8px; font-size: 13px; background: #060608; color: #c8c8d0; }
 .git-form input:focus { outline: none; border-color: #39ff14; }
-.git-form button { padding: 8px 16px; background: #39ff14; color: #fff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.git-form button { padding: 8px 16px; background: #39ff14; color: #0a0a0a border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
 .git-form button:hover { background: #4dff2e; }
 </style>
 </head>
@@ -112,33 +112,33 @@ body { display: flex; }
 <div id="main">
   <div id="header">
     <h1>agent-hub</h1>
-    <select id="model-select" style="font-size:12px;padding:3px 6px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#333;outline:none">
+    <select id="model-select" style="font-size:12px;padding:5px 10px;border:1px solid #222226;border-radius:8px;background:#0a0a0c;color:#c8c8d0;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none">
       <option value="">(default)</option>
     </select>
-    <button id="stat-compact" style="padding:3px 8px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;font-size:11px;color:#666" title="Summarize and compact conversation">Compact</button>
-    <label id="yolo-toggle" style="display:flex;align-items:center;gap:4px;font-size:11px;color:#666;cursor:pointer">
+    <button id="stat-compact" style="padding:3px 8px;background:#f3f4f6;border:1px solid #1a1a1c;border-radius:4px;cursor:pointer;font-size:11px;color:#888898" title="Summarize and compact conversation">Compact</button>
+    <label id="yolo-toggle" style="display:flex;align-items:center;gap:4px;font-size:11px;color:#888898;cursor:pointer">
       <input type="checkbox" id="yolo-cb"> YOLO
     </label>
     <div id="model-dots"></div>
     <span style="font-size:11px;color:#787890;margin-left:4px">Review:</span>
-    <select id="review-model-select" style="font-size:11px;padding:3px 6px;border:1px solid #222226;border-radius:6px;background:#0a0a0c;color:#c8c8d0;outline:none;cursor:pointer" onchange="setRole('review',this.value)"></select>
+    <select id="review-model-select" style="font-size:11px;padding:3px 6px;border:1px solid #222226;border-radius:6px;background:#0a0a0c;color:#c8c8d0;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none" onchange="setRole('review',this.value)"></select>
     <span style="font-size:11px;color:#787890;margin-left:4px">Build:</span>
-    <select id="implement-model-select" style="font-size:11px;padding:3px 6px;border:1px solid #222226;border-radius:6px;background:#0a0a0c;color:#c8c8d0;outline:none;cursor:pointer" onchange="setRole('implement',this.value)"></select>
+    <select id="implement-model-select" style="font-size:11px;padding:3px 6px;border:1px solid #222226;border-radius:6px;background:#0a0a0c;color:#c8c8d0;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none" onchange="setRole('implement',this.value)"></select>
     <span id="header-activity" style="font-size:11px;color:#787890;margin-left:8px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-    <span id="header-balance" style="font-size:11px;color:#999;margin-left:auto"></span>
+    <span id="header-balance" style="font-size:11px;color:#787890;margin-left:auto"></span>
   </div>
   <div id="messages"></div>
   <div id="input-area">
     <form id="input-form">
       <div style="display:flex;flex-direction:column;flex:1;gap:4px">
         <div style="display:flex;gap:6px;align-items:center">
-          <input id="input-box" type="text" placeholder="Type a message..." autofocus style="flex:1;padding:10px 14px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;outline:none">
+          <input id="input-box" type="text" placeholder="Type a message..." autofocus style="flex:1;padding:10px 14px;border:1px solid #1a1a1c;border-radius:6px;font-size:14px;outline:none">
           <button id="send-btn" type="submit">Send</button>
         </div>
         
       </div>
     </form>
-    <div id="stats-bar" style="display:flex;gap:16px;align-items:center;font-size:12px;color:#666;padding:6px 0;border-top:1px solid #f0f0f0;margin-top:4px">
+    <div id="stats-bar" style="display:flex;gap:16px;align-items:center;font-size:12px;color:#787890;padding:6px 0;border-top:1px solid #1a1a1c;margin-top:4px">
       <span id="stat-turns" title="Total turns">T:0</span>
       <span id="stat-cost" title="Total cost">$0.00</span>
       <span id="stat-cache" title="Cache hit rate">hit:0%</span>
@@ -158,28 +158,28 @@ body { display: flex; }
   <div style="background:#141428;border-radius:8px;width:360px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.3);overflow:hidden">
     <div style="padding:16px 20px;font-size:14px;color:#d0d0e0">Delete this chat?</div>
     <div style="padding:0 20px 16px;font-size:12px;color:#707098" id="delete-chat-name"></div>
-    <div style="padding:10px 20px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:8px">
-      <button id="delete-cancel" style="padding:6px 14px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;font-size:12px">Cancel</button>
-      <button id="delete-confirm" style="padding:6px 14px;background:#dc2626;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px">Delete</button>
+    <div style="padding:10px 20px;border-top:1px solid #1a1a1c;display:flex;justify-content:flex-end;gap:8px">
+      <button id="delete-cancel" style="padding:6px 14px;background:#f3f4f6;border:1px solid #1a1a1c;border-radius:4px;cursor:pointer;font-size:12px">Cancel</button>
+      <button id="delete-confirm" style="padding:6px 14px;background:#dc2626;color:#0a0a0aborder:none;border-radius:4px;cursor:pointer;font-size:12px">Delete</button>
     </div>
   </div>
 </div>
 
 <!-- Approval modal -->
 <div id="approval-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:400;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:8px;width:400px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.3);overflow:hidden">
+  <div style="background:#0a0a0aborder-radius:8px;width:400px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.3);overflow:hidden">
     <div style="padding:12px 16px;background:#fef3c7;border-bottom:1px solid #fde68a;font-size:13px">
       ⚠️ <strong>Approval needed</strong>
     </div>
     <div style="padding:12px 16px">
-      <div style="font-size:12px;color:#666;margin-bottom:4px">Tool</div>
+      <div style="font-size:12px;color:#888898;margin-bottom:4px">Tool</div>
       <div style="font-size:14px;font-weight:600;margin-bottom:12px" id="approval-tool"></div>
-      <div style="font-size:12px;color:#666;margin-bottom:4px">Arguments</div>
+      <div style="font-size:12px;color:#888898;margin-bottom:4px">Arguments</div>
       <pre style="background:#f3f4f6;padding:8px;border-radius:4px;font-size:12px;max-height:120px;overflow-y:auto" id="approval-args"></pre>
     </div>
-    <div style="padding:10px 16px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:8px">
-      <button id="approval-deny" style="padding:6px 14px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;font-size:12px">Deny</button>
-      <button id="approval-accept" style="padding:6px 14px;background:#39ff14;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px">Accept</button>
+    <div style="padding:10px 16px;border-top:1px solid #1a1a1c;display:flex;justify-content:flex-end;gap:8px">
+      <button id="approval-deny" style="padding:6px 14px;background:#f3f4f6;border:1px solid #1a1a1c;border-radius:4px;cursor:pointer;font-size:12px">Deny</button>
+      <button id="approval-accept" style="padding:6px 14px;background:#39ff14;color:#0a0a0aborder:none;border-radius:4px;cursor:pointer;font-size:12px">Accept</button>
     </div>
   </div>
 </div>
@@ -343,7 +343,7 @@ function populateModelSelect(models, defaultModel) {
     const opt = document.createElement('option');
     opt.value = m.name;
     opt.textContent = m.name;
-    if (m.status !== 'configured') opt.style.color = '#999';
+    if (m.status !== 'configured') opt.style.color = "#585868";
     modelSelect.appendChild(opt);
   });
   modelSelect.value = current;
@@ -418,7 +418,7 @@ function renderMessage(msg) {
     let streamingClass = (msg.status === 'streaming' || msg.status === 'pending') ? ' streaming' : '';
     div.className += streamingClass;
     div.innerHTML = `
-      <div class="model-label"><span class="indicator ${indicatorClass}"></span>${escapeHtml(msg.model_name || 'model')} <span style="font-size:10px;color:#999">${formatCost(msg)}</span></div>
+      <div class="model-label"><span class="indicator ${indicatorClass}"></span>${escapeHtml(msg.model_name || 'model')} <span style="font-size:10px;color:#787890">${formatCost(msg)}</span></div>
       <div class="bubble">${renderContent(msg.content || '')}</div>`;
     if (indicatorClass === 'active' && msg.content) {
       streamingModel = { el: div.querySelector('.bubble'), text: msg.content || '' };
@@ -519,7 +519,7 @@ evtSource.addEventListener('reasoning', e => {
   if (!reasoningEl) {
     reasoningEl = document.createElement('div');
     reasoningEl.className = 'msg system';
-    reasoningEl.innerHTML = '<details open><summary style="cursor:pointer;font-size:11px;color:#999">Thinking...</summary><div class="bubble" style="font-size:12px;color:#666;max-height:200px;overflow-y:auto" id="reasoning-text"></div></details>';
+    reasoningEl.innerHTML = '<details open><summary style="cursor:pointer;font-size:11px;color:#787890">Thinking...</summary><div class="bubble" style="font-size:12px;color:#888898;max-height:200px;overflow-y:auto" id="reasoning-text"></div></details>';
     messagesEl.appendChild(reasoningEl);
   }
   const textEl = document.getElementById('reasoning-text');
@@ -632,7 +632,7 @@ function renderModelsTab() {
     if (!data || !data.models) { settingsBody.innerHTML = '<div class="row"><span class="label">Error loading models</span></div>'; return; }
     let html = '';
     data.models.forEach(m => { html += '<div class="row"><span class="label">' + escapeHtml(m.name) + '</span><span class="value">' + escapeHtml(m.status) + '</span></div>'; });
-    html += '<div style="margin-top:12px;font-size:11px;color:#999">Set API keys via environment variables in the shell that runs hub.</div>';
+    html += '<div style="margin-top:12px;font-size:11px;color:#787890">Set API keys via environment variables in the shell that runs hub.</div>';
     settingsBody.innerHTML = html;
   });
 }
@@ -649,7 +649,7 @@ function renderConfigTab() {
         if (bal?.deepseek) addSettingRow('DeepSeek balance', bal.deepseek);
         addSettingRow('Host', sys?.hostname || '—');
         addSettingRow('Port', '8080');
-        settingsBody.innerHTML += '<div style="margin-top:12px;font-size:11px;color:#999">Edit ~/.hub/config.toml to change these settings.</div>';
+        settingsBody.innerHTML += '<div style="margin-top:12px;font-size:11px;color:#787890">Edit ~/.hub/config.toml to change these settings.</div>';
       });
     });
   });
