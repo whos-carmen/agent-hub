@@ -104,8 +104,13 @@ body { display: flex; background: #f0f2f5; color: #333; }
   <div id="messages"></div>
   <div id="input-area">
     <form id="input-form">
-      <input id="input-box" type="text" placeholder="Type a message..." autofocus>
-      <button id="send-btn" type="submit">Send</button>
+      <div style="display:flex;flex-direction:column;flex:1;gap:4px">
+        <input id="input-box" type="text" placeholder="Type a message..." autofocus>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input id="file-input" type="text" placeholder="File paths (comma-separated)" style="flex:1;padding:4px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:11px;color:#666;outline:none">
+          <button id="send-btn" type="submit">Send</button>
+        </div>
+      </div>
     </form>
     <div id="status-bar">
       <span class="stat" id="stat-models"></span>
@@ -383,12 +388,24 @@ inputForm.addEventListener('submit', e => {
   e.preventDefault();
   const content = inputBox.value.trim();
   if (!content || sendBtn.disabled) return;
+
+  const fileInput = document.getElementById('file-input');
+  const filePaths = fileInput ? fileInput.value.trim() : '';
+
   inputBox.value = '';
+  if (fileInput) fileInput.value = '';
   sendBtn.disabled = true;
+
   const div = document.createElement('div'); div.className = 'msg user';
   div.innerHTML = `<div class="bubble">${escapeHtml(content)}</div>`;
   messagesEl.appendChild(div); scrollToBottom();
-  fetch('/api/send', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({content}) })
+
+  const body = { content };
+  if (filePaths) {
+    body.file_paths = filePaths.split(',').map(p => p.trim()).filter(p => p);
+  }
+
+  fetch('/api/send', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
     .then(r => { sendBtn.disabled = false; inputBox.focus(); if (!r.ok) { const ed = document.createElement('div'); ed.className = 'msg error'; ed.innerHTML = '<div class="bubble">Failed to send</div>'; messagesEl.appendChild(ed); scrollToBottom(); }})
     .catch(() => { sendBtn.disabled = false; inputBox.focus(); });
 });

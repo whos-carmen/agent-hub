@@ -7,12 +7,14 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/whos-carmen/agent-hub/config"
 	"github.com/whos-carmen/agent-hub/engine"
 	"github.com/whos-carmen/agent-hub/models"
+	"github.com/whos-carmen/agent-hub/repo"
 	"github.com/whos-carmen/agent-hub/web"
 )
 
@@ -21,9 +23,13 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Usage: hub [subcommand] [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Subcommands:\n")
 		fmt.Fprintf(os.Stderr, "  hub              Start the web dashboard + conversation loop (default)\n")
-		fmt.Fprintf(os.Stderr, "  hub ask <model> <prompt>   Send a prompt to a model\n")
+		fmt.Fprintf(os.Stderr, "  hub ask <model> <prompt>    Send a prompt to a model\n")
 		fmt.Fprintf(os.Stderr, "  hub discuss <prompt>        Run a multi-model discussion\n")
 		fmt.Fprintf(os.Stderr, "  hub models                  List configured models\n")
+		fmt.Fprintf(os.Stderr, "  hub clone <url>             Clone a git repo into the work dir\n")
+		fmt.Fprintf(os.Stderr, "  hub status [path]           Show git status\n")
+		fmt.Fprintf(os.Stderr, "  hub diff [path]             Show git diff\n")
+		fmt.Fprintf(os.Stderr, "  hub log [path]              Show recent git log\n")
 		fmt.Fprintf(os.Stderr, "  hub version                 Print version\n")
 		fmt.Fprintf(os.Stderr, "\nFlags:\n")
 		flag.PrintDefaults()
@@ -56,6 +62,14 @@ func main() {
 		runDiscuss(cfg, args[1:])
 	case "models":
 		runModels(cfg)
+	case "clone":
+		runClone(args[1:])
+	case "status":
+		runStatus(args[1:])
+	case "diff":
+		runDiff(args[1:])
+	case "log":
+		runLog(args[1:])
 	case "version":
 		fmt.Println("agent-hub v0.1.0")
 	default:
@@ -105,13 +119,24 @@ func runServer(cfg config.Config) {
 }
 
 func runAsk(cfg config.Config, args []string) {
-	if len(args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: hub ask <model> <prompt>\n")
+	// Extract --file flag from any position before standard parsing
+	files := extractFlag(args, "--file")
+	var cleanArgs []string
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--file" {
+			i++ // skip the flag value
+			continue
+		}
+		cleanArgs = append(cleanArgs, args[i])
+	}
+
+	if len(cleanArgs) < 2 {
+		fmt.Fprintf(os.Stderr, "Usage: hub ask <model> <prompt> [--file path]\n")
 		os.Exit(1)
 	}
 
-	modelName := args[0]
-	prompt := args[1]
+	modelName := cleanArgs[0]
+	prompt := cleanArgs[1]
 
 	modelConfigs := buildAskModelConfigs(cfg)
 	mc, ok := modelConfigs[modelName]
@@ -120,8 +145,23 @@ func runAsk(cfg config.Config, args []string) {
 		os.Exit(1)
 	}
 
+	// Read files if specified
+	fileContext := ""
+	if files != "" {
+		paths := strings.Split(files, ",")
+		for i := range paths {
+			paths[i] = strings.TrimSpace(paths[i])
+		}
+		fileMaps, err := repo.ReadFiles(paths)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error reading files: %v\n", err)
+			os.Exit(1)
+		}
+		fileContext = repo.FormatFilesAsContext(fileMaps)
+	}
+
 	chunkChan := make(chan models.StreamEvent, 64)
-	go models.StreamResponse(context.Background(), mc, "", prompt, "", chunkChan)
+	go models.StreamResponse(context.Background(), mc, "", prompt, fileContext, chunkChan)
 
 	for evt := range chunkChan {
 		switch evt.Type {
@@ -134,6 +174,81 @@ func runAsk(cfg config.Config, args []string) {
 			os.Exit(1)
 		}
 	}
+}
+
+func runClone(args []string) {
+	if len(args) < 1 {
+		fmt.Fprintf(os.Stderr, "Usage: hub clone <url>\n")
+		os.Exit(1)
+	}
+	path, err := repo.Clone(args[0])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Cloned to: %s\n", path)
+}
+
+func runStatus(args []string) {
+	path := "."
+	if len(args) > 0 {
+		path = args[0]
+	}
+	root, err := repo.CurrentRepo(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	status, err := repo.Status(root)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	if strings.TrimSpace(status) == "" {
+		fmt.Println("(clean)")
+	} else {
+		fmt.Println(status)
+	}
+}
+
+func runDiff(args []string) {
+	path := "."
+	if len(args) > 0 {
+		path = args[0]
+	}
+	root, err := repo.CurrentRepo(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	diff, err := repo.Diff(root)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	if strings.TrimSpace(diff) == "" {
+		fmt.Println("(no unstaged changes)")
+	} else {
+		fmt.Println(diff)
+	}
+}
+
+func runLog(args []string) {
+	path := "."
+	if len(args) > 0 {
+		path = args[0]
+	}
+	root, err := repo.CurrentRepo(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	log, err := repo.Log(root, 10)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println(log)
 }
 
 func runDiscuss(cfg config.Config, args []string) {
@@ -195,4 +310,14 @@ func buildAskModelConfigs(cfg config.Config) map[string]models.ModelConfig {
 		}
 	}
 	return mc
+}
+
+// extractFlag extracts the value of a named flag (e.g. --file) from args in any position.
+func extractFlag(args []string, name string) string {
+	for i := 0; i < len(args)-1; i++ {
+		if args[i] == name {
+			return args[i+1]
+		}
+	}
+	return ""
 }

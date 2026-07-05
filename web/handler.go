@@ -18,6 +18,7 @@ import (
 
 	"github.com/whos-carmen/agent-hub/engine"
 	"github.com/whos-carmen/agent-hub/models"
+	"github.com/whos-carmen/agent-hub/repo"
 )
 
 //go:embed static/index.html
@@ -103,7 +104,8 @@ func (s *Server) handleGetSessionMessages(w http.ResponseWriter, r *http.Request
 func (s *Server) handleSend(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req struct {
-		Content string `json:"content"`
+		Content   string   `json:"content"`
+		FilePaths []string `json:"file_paths,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid JSON", http.StatusBadRequest)
@@ -113,8 +115,21 @@ func (s *Server) handleSend(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "content required", http.StatusBadRequest)
 		return
 	}
+
+	// If file paths provided, read them and prepend as context
+	input := req.Content
+	if len(req.FilePaths) > 0 {
+		files, err := repo.ReadFiles(req.FilePaths)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("error reading files: %v", err), http.StatusBadRequest)
+			return
+		}
+		fileContext := repo.FormatFilesAsContext(files)
+		input = fileContext + "---\n\n" + input
+	}
+
 	select {
-	case s.state.Input <- req.Content:
+	case s.state.Input <- input:
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 	default:
