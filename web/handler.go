@@ -226,8 +226,54 @@ func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleGetStats(w http.ResponseWriter, r *http.Request) {
 	stats := s.state.GetActiveSessionStats()
+	activeID := s.state.GetActiveSessionID()
+	sessions := s.state.GetSessions()
+	
+	// Find active session model
+	var activeModel string
+	for _, sess := range sessions {
+		if sess.ID == activeID {
+			activeModel = sess.Model
+			if activeModel == "" { activeModel = s.cfg.DefaultModel }
+			break
+		}
+	}
+	
+	// Build response with cost and context info
+	type costStats struct {
+		Turns    int     `json:"turns"`
+		TokensIn int     `json:"tokens_in"`
+		TokensOut int    `json:"tokens_out"`
+		Cost     float64 `json:"cost"`
+		CostFmt  string  `json:"cost_fmt"`
+		CtxPct   int     `json:"ctx_pct"`
+		CtxFmt   string  `json:"ctx_fmt"`
+	}
+	
+	resp := costStats{
+		Turns:    stats.Turns,
+		TokensIn: stats.TokensIn,
+		TokensOut: stats.TokensOut,
+	}
+	
+	if mdef, ok := s.cfg.Models[activeModel]; ok {
+		costIn := float64(stats.TokensIn) / 1_000_000 * mdef.PriceIn
+		costOut := float64(stats.TokensOut) / 1_000_000 * mdef.PriceOut
+		resp.Cost = costIn + costOut
+		if resp.Cost < 0.01 {
+			resp.CostFmt = "<$0.01"
+		} else {
+			resp.CostFmt = fmt.Sprintf("$%.2f", resp.Cost)
+		}
+		if mdef.Context > 0 {
+			total := stats.TokensIn + stats.TokensOut
+			resp.CtxPct = total * 100 / mdef.Context
+			resp.CtxFmt = fmt.Sprintf("%d%%", resp.CtxPct)
+		}
+	}
+	
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(stats)
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (s *Server) handleCompact(w http.ResponseWriter, r *http.Request) {

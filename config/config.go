@@ -13,6 +13,17 @@ type ModelDef struct {
 	BaseURL   string `toml:"base_url"`
 	Type      string `toml:"type"` // "deepseek" | "openai"
 	ModelName string `toml:"model_name"` // override the model name sent in API calls
+	PriceIn   float64 `toml:"price_per_1m_input"`  // USD per 1M input tokens
+	PriceOut  float64 `toml:"price_per_1m_output"` // USD per 1M output tokens
+	Context   int     `toml:"context_window"`       // max context window in tokens
+}
+
+func (m ModelDef) CostIn(tokens int) float64 {
+	return float64(tokens) / 1_000_000 * m.PriceIn
+}
+
+func (m ModelDef) CostOut(tokens int) float64 {
+	return float64(tokens) / 1_000_000 * m.PriceOut
 }
 
 type Routing struct {
@@ -43,24 +54,36 @@ func Default() Config {
 				BaseURL:   "https://api.xiaomimimo.com/v1/chat/completions",
 				Type:      "openai",
 				ModelName: "mimo-v2.5-pro",
+				PriceIn:   0.14,
+				PriceOut:  0.28,
+				Context:   1000000,
 			},
 			"mimo": {
 				APIKeyEnv: "MIMO_API_KEY",
 				BaseURL:   "https://api.xiaomimimo.com/v1/chat/completions",
 				Type:      "openai",
 				ModelName: "mimo-v2.5",
+				PriceIn:   0.14,
+				PriceOut:  0.28,
+				Context:   1000000,
 			},
 			"deepseek-pro": {
 				APIKeyEnv: "DEEPSEEK_API_KEY",
 				BaseURL:   "https://api.deepseek.com/v1/chat/completions",
 				Type:      "deepseek",
 				ModelName: "deepseek-chat",
+				PriceIn:   0.55,
+				PriceOut:  2.19,
+				Context:   1000000,
 			},
 			"deepseek-flash": {
 				APIKeyEnv: "DEEPSEEK_API_KEY",
 				BaseURL:   "https://api.deepseek.com/v1/chat/completions",
 				Type:      "deepseek",
 				ModelName: "deepseek-v4-flash",
+				PriceIn:   0.14,
+				PriceOut:  0.28,
+				Context:   1000000,
 			},
 		},
 		Routing: Routing{
