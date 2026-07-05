@@ -282,6 +282,7 @@ func hubSystemPrompt(modelName string, allModels map[string]models.ModelConfig, 
 		sb.WriteString(fmt.Sprintf("\nThe default model (used for single-model queries) is %s.\n", defaultModel))
 	}
 	sb.WriteString("\nWhen responding, you can suggest delegating work to other models by prefixing with @parallel (for code review, security audits, testing) or @discuss (for debate, brainstorming). The hub will route accordingly.\n")
+	sb.WriteString("\nTools marked 🔴 DANGEROUS require YOLO mode to be enabled by the user. Tools marked 🟢 SAFE always work. When YOLO is off and you need a dangerous tool, tell the user to enable YOLO first.\n")
 	sb.WriteString("You are talking to a user through a web dashboard or CLI. Be concise and helpful.\n")
 	return sb.String()
 }

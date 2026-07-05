@@ -299,11 +299,17 @@ func (tr *ToolRegistry) IsDangerous(name string) bool {
 func (tr *ToolRegistry) OpenAIFormats() []models.Tool {
 	var tools []models.Tool
 	for _, td := range tr.tools {
+		desc := td.Description
+		if td.Dangerous {
+			desc = "🔴 DANGEROUS — requires YOLO mode to execute. " + desc
+		} else {
+			desc = "🟢 SAFE — always allowed. " + desc
+		}
 		tools = append(tools, models.Tool{
 			Type: "function",
 			Function: models.ToolFunction{
 				Name:        td.Name,
-				Description: td.Description,
+				Description: desc,
 				Parameters:  td.Parameters,
 			},
 		})
