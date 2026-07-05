@@ -62,10 +62,10 @@ body { display: flex; }
 
 /* ── Input ─────────────────────────────────── */
 #input-area { padding: 16px 28px; background: #080808; border-top: 1px solid #222; max-width: 900px; margin: 0 auto; width: 100%; box-sizing: border-box; }
-#input-box { color-scheme: dark; padding: 12px 16px; border: 1px solid #1a1a1a; border-radius: 10px; font-size: 14px; outline: none; width: 100%; transition: .15s; background: #020202; color: #c8c8d0; }
+#input-box { color-scheme: dark; padding: 14px 18px; border: 1px solid #222; border-radius: 12px; font-size: 14px; outline: none; width: 100%; transition: .15s; background: #020202; color: #c8c8d0; }
 #input-box::placeholder { color: #686878; }
 #input-box:focus { border-color: #39ff14; box-shadow: 0 0 0 3px rgba(57,255,20,.2); }
-#send-btn { padding: 10px 22px; background: #1db700; color: #000; font-weight: 700; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: .15s; }
+#send-btn { padding: 12px 24px; background: #1db700; color: #000; font-weight: 700; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: .15s; }
 #send-btn:hover { background: #22cc00; box-shadow: 0 0 16px rgba(57,255,20,.5); }
 #send-btn:disabled { background: #151515; cursor: default; box-shadow: none; color: #585860; }
 
@@ -130,7 +130,7 @@ body { display: flex; }
   </div>
   <div style="display:flex;flex:1;min-height:0">
       <div style="flex:1;display:flex;flex-direction:column;min-width:0">
-        <div id="messages"><div id="messages-inner" style="width:100%;max-width:900px;padding:0 28px;box-sizing:border-box"></div></div>
+        <div id="messages"><div id="messages-inner" style="width:100%;max-width:960px;padding:0 24px;box-sizing:border-box"></div></div>
         <div id="input-area">
     <form id="input-form">
       <div style="display:flex;flex-direction:column;flex:1;gap:4px">
@@ -141,7 +141,7 @@ body { display: flex; }
         
       </div>
     </form>
-    <div id="stats-bar" style="display:flex;gap:16px;align-items:center;font-size:12px;color:#787890;padding:6px 0;border-top:1px solid #111;margin-top:4px">
+    <div id="stats-bar" style="display:flex;gap:16px;align-items:center;font-size:12px;color:#787890;padding:8px 0 0;margin-top:2px">
       <span id="stat-turns" title="Total turns">T:0</span>
       <span id="stat-cost" title="Total cost">$0.00</span>
       <span id="stat-cache" title="Cache hit rate">hit:0%</span>
@@ -151,7 +151,7 @@ body { display: flex; }
 
   </div>
 </div>
-    <div id="right-panel" style="width:190px;min-width:190px;background:#050505;border-left:1px solid #151515;padding:14px;overflow-y:auto;font-size:11px">
+    <div id="right-panel" style="width:170px;min-width:170px;background:#050505;border-left:1px solid #151515;padding:14px;overflow-y:auto;font-size:11px">
       <div style="font-size:10px;font-weight:700;color:#5cff3e;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Models</div>
       <div id="model-status-list" style="margin-bottom:12px"></div>
       <div style="font-size:10px;font-weight:700;color:#5cff3e;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Activity</div>
