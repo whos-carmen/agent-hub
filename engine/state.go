@@ -40,6 +40,9 @@ type ConversationState struct {
 	// Input is the channel for receiving new user messages.
 	Input chan string
 
+	// YOLOMode: when true, auto-approve all tool calls including dangerous ones.
+	YOLOMode bool
+
 	// persistPath is the filesystem path for session persistence.
 	persistPath string
 }
@@ -189,6 +192,20 @@ func (s *ConversationState) GetSessions() []*Session {
 		}
 	}
 	return out
+}
+
+// SetYOLO toggles YOLO mode.
+func (s *ConversationState) SetYOLO(on bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.YOLOMode = on
+}
+
+// GetYOLO returns whether YOLO mode is active.
+func (s *ConversationState) GetYOLO() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.YOLOMode
 }
 
 // RenameSession renames a session.

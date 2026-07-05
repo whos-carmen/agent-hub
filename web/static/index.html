@@ -102,6 +102,9 @@ body { display: flex; background: #f0f2f5; color: #333; }
     <select id="model-select" style="font-size:12px;padding:3px 6px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#333;outline:none">
       <option value="">(default)</option>
     </select>
+    <label id="yolo-toggle" style="display:flex;align-items:center;gap:4px;font-size:11px;color:#666;cursor:pointer">
+      <input type="checkbox" id="yolo-cb"> YOLO
+    </label>
     <div id="model-dots"></div>
   </div>
   <div id="messages"></div>
@@ -631,6 +634,13 @@ function saveGitConfig() {
 
 // ─── Init ───────────────────────────────────────────────
 newSessionBtn.addEventListener('click', () => createSession(''));
+
+// YOLO toggle
+const yoloCb = document.getElementById('yolo-cb');
+fetch('/api/yolo').then(r => r.json()).then(d => { if (d) yoloCb.checked = d.yolo; });
+yoloCb.addEventListener('change', () => {
+  fetch('/api/yolo', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({on: yoloCb.checked}) });
+});
 
 fetch('/api/models').then(r => r.json()).then(data => {
   if (data && data.models) {

@@ -87,7 +87,18 @@ func RunLoop(state *ConversationState, cfg config.Config) {
 
 			if len(toolCalls) > 0 {
 				slog.Info("executing tools", "count", len(toolCalls))
+				yolo := state.GetYOLO()
 				for _, tc := range toolCalls {
+					dangerous := tools.IsDangerous(tc.Function.Name)
+					if dangerous && !yolo {
+						state.BroadcastEvent(models.StreamEvent{
+							Type: "status",
+							Text: "Blocked: " + tc.Function.Name + " requires approval (enable YOLO to run)",
+						})
+						msgs = append(msgs, models.ChatMessage{Role:"assistant", ToolCalls: []models.ToolCall{{ID:tc.ID, Type:"function", Function: models.ToolCallFunction{Name:tc.Function.Name, Arguments:tc.Function.Arguments}}}})
+						msgs = append(msgs, models.ChatMessage{Role:"tool", ToolCallID: tc.ID, Content: "Blocked: tool requires YOLO mode. Ask user to enable it."})
+						continue
+					}
 					state.BroadcastEvent(models.StreamEvent{
 						Type: "status",
 						Text: "Running: " + tc.Function.Name,

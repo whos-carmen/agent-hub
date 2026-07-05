@@ -61,6 +61,8 @@ func (s *Server) Start() error {
 	mux.HandleFunc("GET /api/sessions/{id}/messages", s.handleGetSessionMessages)
 
 	mux.HandleFunc("GET /api/system", s.handleGetSystem)
+	mux.HandleFunc("GET /api/yolo", s.handleGetYOLO)
+	mux.HandleFunc("PUT /api/yolo", s.handleSetYOLO)
 	mux.HandleFunc("GET /api/git", s.handleGetGit)
 	mux.HandleFunc("POST /api/git/config", s.handleSetGitConfig)
 
@@ -178,6 +180,25 @@ func (s *Server) handleGetSystem(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(info)
 }
+
+func (s *Server) handleGetYOLO(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"yolo": s.state.GetYOLO()})
+}
+
+func (s *Server) handleSetYOLO(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		On bool `json:"on"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+	s.state.SetYOLO(req.On)
+	s.subs.Send(models.StreamEvent{Type: "yolo_changed", Text: fmt.Sprintf("%t", req.On)})
+	w.WriteHeader(http.StatusNoContent)
+}
+
 
 func (s *Server) handleGetGit(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]interface{}{
