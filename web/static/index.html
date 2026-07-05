@@ -107,6 +107,7 @@ body { display: flex; background: #f0f2f5; color: #333; }
       <input type="checkbox" id="yolo-cb"> YOLO
     </label>
     <div id="model-dots"></div>
+    <span id="header-activity" style="font-size:11px;color:#666;margin-left:8px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
     <span id="header-balance" style="font-size:11px;color:#999;margin-left:auto"></span>
   </div>
   <div id="messages"></div>
@@ -457,8 +458,27 @@ evtSource.addEventListener('dispatch', e => {
   div.innerHTML = `<div class="bubble">${escapeHtml(data.text || '')}</div>`;
   messagesEl.appendChild(div); scrollToBottom();
 });
+// Reasoning (thinking) display
+let reasoningEl = null;
+evtSource.addEventListener('reasoning', e => {
+  const data = JSON.parse(e.data);
+  document.getElementById('header-activity').textContent = 'Thinking...';
+  if (!reasoningEl) {
+    reasoningEl = document.createElement('div');
+    reasoningEl.className = 'msg system';
+    reasoningEl.innerHTML = '<details open><summary style="cursor:pointer;font-size:11px;color:#999">Thinking...</summary><div class="bubble" style="font-size:12px;color:#666;max-height:200px;overflow-y:auto" id="reasoning-text"></div></details>';
+    messagesEl.appendChild(reasoningEl);
+  }
+  const textEl = document.getElementById('reasoning-text');
+  if (textEl) { textEl.textContent += data.chunk || ''; scrollToBottom(); }
+});
+
+evtSource.addEventListener('done', () => { reasoningEl = null; });
+evtSource.addEventListener('error', () => { reasoningEl = null; });
+
 evtSource.addEventListener('status', e => {
   const data = JSON.parse(e.data);
+  document.getElementById('header-activity').textContent = data.text || '';
   const div = document.createElement('div'); div.className = 'msg system';
   div.innerHTML = `<div class="bubble">${escapeHtml(data.text || '')}</div>`;
   messagesEl.appendChild(div); scrollToBottom();

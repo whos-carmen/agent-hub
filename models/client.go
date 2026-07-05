@@ -36,9 +36,10 @@ type ChatRequest struct {
 type ChatChunk struct {
 	Choices []struct {
 		Delta struct {
-			Role      string           `json:"role,omitempty"`
-			Content   string           `json:"content,omitempty"`
-			ToolCalls []toolCallDelta  `json:"tool_calls,omitempty"`
+			Role             string           `json:"role,omitempty"`
+			Content          string           `json:"content,omitempty"`
+			ReasoningContent string           `json:"reasoning_content,omitempty"`
+			ToolCalls        []toolCallDelta  `json:"tool_calls,omitempty"`
 		} `json:"delta"`
 		FinishReason *string `json:"finish_reason"`
 	} `json:"choices"`
@@ -133,7 +134,11 @@ func StreamResponse(ctx context.Context, cfg ModelConfig, systemPrompt string, u
 		}
 
 		if len(chunk.Choices) > 0 {
-			delta := chunk.Choices[0].Delta.Content
+			d := chunk.Choices[0].Delta
+			if d.ReasoningContent != "" {
+				chunkChan <- StreamEvent{Type: "reasoning", Chunk: d.ReasoningContent}
+			}
+			delta := d.Content
 			if delta != "" {
 				fullText.WriteString(delta)
 				chunkChan <- StreamEvent{Type: "chunk", Chunk: delta}
@@ -304,6 +309,9 @@ func StreamChatWithTools(ctx context.Context, cfg ModelConfig, messages []ChatMe
 		if len(chunk.Choices) > 0 {
 			delta := chunk.Choices[0].Delta
 
+			if delta.ReasoningContent != "" {
+				chunkChan <- StreamEvent{Type: "reasoning", Chunk: delta.ReasoningContent}
+			}
 			if delta.Content != "" {
 				fullText.WriteString(delta.Content)
 				chunkChan <- StreamEvent{Type: "chunk", Chunk: delta.Content}

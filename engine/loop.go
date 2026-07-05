@@ -61,6 +61,8 @@ func RunLoop(state *ConversationState, cfg config.Config) {
 						continue
 					}
 					switch evt.Type {
+					case "reasoning":
+						state.BroadcastEvent(evt)
 					case "chunk":
 						fullText.WriteString(evt.Chunk)
 						state.BroadcastEvent(models.StreamEvent{
