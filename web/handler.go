@@ -27,6 +27,8 @@ import (
 //go:embed static/index.html
 var _indexHTML string
 
+var httpClient = &http.Client{Timeout: 30 * time.Second}
+
 type Server struct {
 	state   *engine.ConversationState
 	subs    *SSESubscriber
@@ -63,6 +65,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("GET /api/sessions/{id}/messages", s.handleGetSessionMessages)
 
 	mux.HandleFunc("GET /api/system", s.handleGetSystem)
+	mux.HandleFunc("GET /api/balance", s.handleGetBalance)
 	mux.HandleFunc("GET /api/yolo", s.handleGetYOLO)
 	mux.HandleFunc("PUT /api/yolo", s.handleSetYOLO)
 	mux.HandleFunc("POST /api/approve", s.handleApprove)
@@ -217,6 +220,43 @@ func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Error(w, "approval not found", http.StatusNotFound)
+}
+
+func (s *Server) handleGetBalance(w http.ResponseWriter, r *http.Request) {
+	type balanceResp struct {
+		DeepSeek  string `json:"deepseek"`
+	}
+	resp := balanceResp{}
+	// DeepSeek balance
+	if key := os.Getenv("DEEPSEEK_API_KEY"); key != "" {
+		req, _ := http.NewRequest("GET", "https://api.deepseek.com/user/balance", nil)
+		req.Header.Set("Authorization", "Bearer "+key)
+		res, err := httpClient.Do(req)
+		if err == nil {
+			defer res.Body.Close()
+			body, _ := io.ReadAll(res.Body)
+			var ds struct {
+				BalanceInfos []struct {
+					Currency        string `json:"currency"`
+					TotalBalance    string `json:"total_balance"`
+					GrantedBalance  string `json:"granted_balance"`
+					ToppedUpBalance string `json:"topped_up_balance"`
+				} `json:"balance_infos"`
+			}
+			if json.Unmarshal(body, &ds) == nil && len(ds.BalanceInfos) > 0 {
+				b := ds.BalanceInfos[0]
+				resp.DeepSeek = fmt.Sprintf("%s %s (granted: %s, topped: %s)", b.TotalBalance, b.Currency, b.GrantedBalance, b.ToppedUpBalance)
+			} else {
+				resp.DeepSeek = "could not parse balance"
+			}
+		} else {
+			resp.DeepSeek = "API error"
+		}
+	} else {
+		resp.DeepSeek = "no key configured"
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (s *Server) handleGetGit(w http.ResponseWriter, r *http.Request) {

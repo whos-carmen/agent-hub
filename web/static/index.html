@@ -128,6 +128,19 @@ body { display: flex; background: #f0f2f5; color: #333; }
 </div>
 
 
+
+<!-- Delete confirmation modal -->
+<div id="delete-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:500;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:8px;width:360px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.3);overflow:hidden">
+    <div style="padding:16px 20px;font-size:14px">Delete this chat?</div>
+    <div style="padding:0 20px 16px;font-size:12px;color:#999" id="delete-chat-name"></div>
+    <div style="padding:10px 20px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:8px">
+      <button id="delete-cancel" style="padding:6px 14px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;font-size:12px">Cancel</button>
+      <button id="delete-confirm" style="padding:6px 14px;background:#dc2626;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px">Delete</button>
+    </div>
+  </div>
+</div>
+
 <!-- Approval modal -->
 <div id="approval-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:400;align-items:center;justify-content:center">
   <div style="background:#fff;border-radius:8px;width:400px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.3);overflow:hidden">
@@ -231,10 +244,24 @@ function createSession(name) {
   });
 }
 
+let pendingDeleteId = null;
 function deleteSession(id) {
-  if (!confirm('Delete this chat?')) return;
-  fetch('/api/sessions/' + encodeURIComponent(id), { method: 'DELETE' }).then(() => loadSessionList());
+  pendingDeleteId = id;
+  const s = sessions.find(x => x.id === id);
+  document.getElementById('delete-chat-name').textContent = s?.name || '';
+  document.getElementById('delete-modal').style.display = 'flex';
 }
+document.addEventListener('click', e => {
+  if (e.target.id === 'delete-confirm' && pendingDeleteId) {
+    document.getElementById('delete-modal').style.display = 'none';
+    fetch('/api/sessions/' + encodeURIComponent(pendingDeleteId), { method: 'DELETE' }).then(() => loadSessionList());
+    pendingDeleteId = null;
+  }
+  if (e.target.id === 'delete-cancel') {
+    document.getElementById('delete-modal').style.display = 'none';
+    pendingDeleteId = null;
+  }
+});
 
 function renameSession(id, name, cb) {
   fetch('/api/sessions/' + encodeURIComponent(id), { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) })
@@ -533,14 +560,17 @@ function renderModelsTab() {
 function renderConfigTab() {
   settingsBody.innerHTML = '<div class="row"><span class="label">Loading...</span></div>';
   fetchJSON('/api/system').then(sys => {
-    fetchJSON('/api/models').then(data => {
-      settingsBody.innerHTML = '';
-      addSettingRow('Projects dir', '~ (home)');
-      addSettingRow('Default model', data?.default_model || 'mimo-pro');
-      addSettingRow('API keys', (data?.models || []).filter(m => m.status === 'configured').length + '/' + (data?.models || []).length + ' configured');
-      addSettingRow('Host', sys?.hostname || '—');
-      addSettingRow('Port', '8080');
-      settingsBody.innerHTML += '<div style="margin-top:12px;font-size:11px;color:#999">Edit ~/.hub/config.toml to change these settings.</div>';
+    fetchJSON('/api/balance').then(bal => {
+      fetchJSON('/api/models').then(data => {
+        settingsBody.innerHTML = '';
+        addSettingRow('Projects dir', '~ (home)');
+        addSettingRow('Default model', data?.default_model || 'mimo-pro');
+        addSettingRow('API keys', (data?.models || []).filter(m => m.status === 'configured').length + '/' + (data?.models || []).length + ' configured');
+        if (bal?.deepseek) addSettingRow('DeepSeek balance', bal.deepseek);
+        addSettingRow('Host', sys?.hostname || '—');
+        addSettingRow('Port', '8080');
+        settingsBody.innerHTML += '<div style="margin-top:12px;font-size:11px;color:#999">Edit ~/.hub/config.toml to change these settings.</div>';
+      });
     });
   });
 }
