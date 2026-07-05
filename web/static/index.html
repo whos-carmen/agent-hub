@@ -135,7 +135,7 @@ body { display: flex; }
     <form id="input-form">
       <div style="display:flex;flex-direction:column;flex:1;gap:4px">
         <div style="display:flex;gap:6px;align-items:center">
-          <input id="input-box" type="text" placeholder="Type a message..." autofocus style="flex:1;padding:10px 14px;border:1px solid #111;border-radius:6px;font-size:14px;outline:none">
+          <input id="input-box" type="text" placeholder="Type a message..." autofocus autocomplete="off" style="flex:1;padding:10px 14px;border:1px solid #111;border-radius:6px;font-size:14px;outline:none">
           <button id="send-btn" type="submit">Send</button>
         </div>
         
@@ -165,10 +165,10 @@ body { display: flex; }
 
 <!-- Delete confirmation modal -->
 <div id="delete-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:500;align-items:center;justify-content:center">
-  <div style="background:#141428;border-radius:8px;width:360px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.3);overflow:hidden">
-    <div style="padding:16px 20px;font-size:14px;color:#d0d0e0">Delete this chat?</div>
-    <div style="padding:0 20px 16px;font-size:12px;color:#707098" id="delete-chat-name"></div>
-    <div style="padding:10px 20px;border-top:1px solid #111;display:flex;justify-content:flex-end;gap:8px">
+  <div style="background:#080808;border-radius:14px;width:380px;border:1px solid #151515;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.3);overflow:hidden">
+    <div style="padding:18px 22px 8px;font-size:15px;font-weight:600;color:#c8c8d0">Delete this chat?</div>
+    <div style="padding:4px 22px 18px;font-size:12px;color:#787890" id="delete-chat-name"></div>
+    <div style="padding:12px 22px;border-top:1px solid #151515;display:flex;justify-content:flex-end;gap:8px">
       <button id="delete-cancel" style="padding:8px 16px;background:#151515;color:#c8c8d0;border:1px solid #333;border-radius:8px;cursor:pointer;font-size:12px">Cancel</button>
       <button id="delete-confirm" style="padding:8px 16px;background:#dc2626;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">Delete</button>
     </div>
@@ -242,7 +242,7 @@ function loadSessionList() {
   fetchJSON('/api/sessions').then(data => {
     if (!data) return;
     sessions = data.sessions || [];
-    activeSessionId = data.active;
+    activeSessionId = localStorage.getItem('hub-active-session') || data.active;
     renderSessionList();
     loadMessages();
     // Restore model select for active session
