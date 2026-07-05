@@ -54,8 +54,8 @@ func Default() Config {
 				BaseURL:   "https://api.xiaomimimo.com/v1/chat/completions",
 				Type:      "openai",
 				ModelName: "mimo-v2.5-pro",
-				PriceIn:   0.14,
-				PriceOut:  0.28,
+				PriceIn:   0.435,
+				PriceOut:  0.87,
 				Context:   1000000,
 			},
 			"mimo": {
