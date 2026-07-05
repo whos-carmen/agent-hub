@@ -40,15 +40,15 @@ func Default() Config {
 		Models: map[string]ModelDef{
 			"mimo-pro": {
 				APIKeyEnv: "MIMO_API_KEY",
-				BaseURL:   "https://api.mimocode.com/v1/chat/completions",
+				BaseURL:   "https://api.xiaomimimo.com/v1/chat/completions",
 				Type:      "openai",
-				ModelName: "mimo-pro",
+				ModelName: "mimo-v2.5-pro",
 			},
 			"mimo": {
 				APIKeyEnv: "MIMO_API_KEY",
-				BaseURL:   "https://api.mimocode.com/v1/chat/completions",
+				BaseURL:   "https://api.xiaomimimo.com/v1/chat/completions",
 				Type:      "openai",
-				ModelName: "mimo",
+				ModelName: "mimo-v2.5",
 			},
 			"deepseek-pro": {
 				APIKeyEnv: "DEEPSEEK_API_KEY",
