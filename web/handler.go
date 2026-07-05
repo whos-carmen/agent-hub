@@ -261,7 +261,6 @@ func (s *Server) handleGetStats(w http.ResponseWriter, r *http.Request) {
 	activeID := s.state.GetActiveSessionID()
 	sessions := s.state.GetSessions()
 	
-	// Find active session model
 	var activeModel string
 	for _, sess := range sessions {
 		if sess.ID == activeID {
@@ -271,39 +270,48 @@ func (s *Server) handleGetStats(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	
-	// Build response with cost and context info
-	type costStats struct {
-		Turns    int     `json:"turns"`
-		TokensIn int     `json:"tokens_in"`
-		TokensOut int    `json:"tokens_out"`
-		Cost     float64 `json:"cost"`
-		CostFmt  string  `json:"cost_fmt"`
-		CtxPct   int     `json:"ctx_pct"`
-		CtxFmt   string  `json:"ctx_fmt"`
+	type fullStats struct {
+		Turns      int     `json:"turns"`
+		TokensIn   int     `json:"tokens_in"`
+		TokensOut  int     `json:"tokens_out"`
+		Cached     int     `json:"cached_tokens"`
+		Cost       float64 `json:"cost"`
+		CostFmt    string  `json:"cost_fmt"`
+		AvgCost    float64 `json:"avg_cost"`
+		AvgCostFmt string  `json:"avg_cost_fmt"`
+		CtxPct     int     `json:"ctx_pct"`
+		CtxFmt     string  `json:"ctx_fmt"`
+		CachePct   int     `json:"cache_pct"`
+		CacheFmt   string  `json:"cache_fmt"`
 	}
 	
-	resp := costStats{
-		Turns:    stats.Turns,
-		TokensIn: stats.TokensIn,
+	resp := fullStats{
+		Turns:     stats.Turns,
+		TokensIn:  stats.TokensIn,
 		TokensOut: stats.TokensOut,
+		Cached:    stats.CachedTokens,
 	}
 	
 	if mdef, ok := s.cfg.Models[activeModel]; ok {
 		costIn := float64(stats.TokensIn) / 1_000_000 * mdef.PriceIn
 		costOut := float64(stats.TokensOut) / 1_000_000 * mdef.PriceOut
 		resp.Cost = costIn + costOut
-		if resp.Cost < 0.01 {
-			resp.CostFmt = "<$0.01"
-		} else {
-			resp.CostFmt = fmt.Sprintf("$%.2f", resp.Cost)
+		if resp.Cost < 0.01 { resp.CostFmt = "<$0.01" } else { resp.CostFmt = fmt.Sprintf("$%.2f", resp.Cost) }
+		if stats.Turns > 0 {
+			resp.AvgCost = resp.Cost / float64(stats.Turns)
+			if resp.AvgCost < 0.01 { resp.AvgCostFmt = "<$0.01" } else { resp.AvgCostFmt = fmt.Sprintf("$%.2f", resp.AvgCost) }
 		}
 		if mdef.Context > 0 {
 			total := stats.TokensIn + stats.TokensOut
 			resp.CtxPct = total * 100 / mdef.Context
 			resp.CtxFmt = fmt.Sprintf("%d%%", resp.CtxPct)
-		} else {
-			resp.CtxFmt = "0%"
-		}
+		} else { resp.CtxFmt = "0%" }
+	}
+	
+	// Cache hit %
+	if stats.TokensIn > 0 {
+		resp.CachePct = stats.CachedTokens * 100 / stats.TokensIn
+		resp.CacheFmt = fmt.Sprintf("%d%%", resp.CachePct)
 	}
 	
 	w.Header().Set("Content-Type", "application/json")

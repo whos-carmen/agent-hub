@@ -24,6 +24,7 @@ type Session struct {
 type SessionStats struct {
 	TokensIn     int `json:"tokens_in"`
 	TokensOut    int `json:"tokens_out"`
+	CachedTokens int `json:"cached_tokens"`
 	Turns        int `json:"turns"`
 }
 
@@ -258,13 +259,14 @@ func (s *ConversationState) GetActiveSessionModel(defaultModel string) string {
 	return defaultModel
 }
 
-func (s *ConversationState) RecordUsage(tokensIn, tokensOut int) {
+func (s *ConversationState) RecordUsage(tokensIn, tokensOut, cached int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sess := s.getActiveSessionLocked()
 	if sess == nil { return }
 	sess.Stats.TokensIn += tokensIn
 	sess.Stats.TokensOut += tokensOut
+	sess.Stats.CachedTokens += cached
 	sess.Stats.Turns++
 	s.maybeSaveLocked()
 }

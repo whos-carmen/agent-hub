@@ -47,6 +47,9 @@ type ChatChunk struct {
 		PromptTokens     int `json:"prompt_tokens"`
 		CompletionTokens int `json:"completion_tokens"`
 		TotalTokens      int `json:"total_tokens"`
+		PromptTokensDetails *struct {
+			CachedTokens int `json:"cached_tokens"`
+		} `json:"prompt_tokens_details,omitempty"`
 	} `json:"usage,omitempty"`
 }
 
@@ -340,12 +343,15 @@ func StreamChatWithTools(ctx context.Context, cfg ModelConfig, messages []ChatMe
 					}
 					chunkChan <- StreamEvent{Type: "tool_calls", Text: fullText.String(), ToolCalls: calls}
 				} else {
-					tokensIn, tokensOut := 0, 0
+					tokensIn, tokensOut, cached := 0, 0, 0
 					if chunk.Usage != nil {
 						tokensIn = chunk.Usage.PromptTokens
 						tokensOut = chunk.Usage.CompletionTokens
+						if chunk.Usage.PromptTokensDetails != nil {
+							cached = chunk.Usage.PromptTokensDetails.CachedTokens
+						}
 					}
-					chunkChan <- StreamEvent{Type: "done", Text: fullText.String(), TokensIn: tokensIn, TokensOut: tokensOut}
+					chunkChan <- StreamEvent{Type: "done", Text: fullText.String(), TokensIn: tokensIn, TokensOut: tokensOut, CachedTokens: cached}
 				}
 			}
 		}

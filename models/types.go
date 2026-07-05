@@ -45,6 +45,7 @@ type StreamEvent struct {
 	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
 	TokensIn  int        `json:"tokens_in,omitempty"`
 	TokensOut int        `json:"tokens_out,omitempty"`
+	CachedTokens int    `json:"cached_tokens,omitempty"`
 }
 
 // DispatchPlan describes how the router decided to handle user input.
