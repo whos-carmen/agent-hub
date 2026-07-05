@@ -43,7 +43,7 @@ body { display: flex; }
 .model-dot.offline { background: #484850; }
 
 /* ── Messages ──────────────────────────────── */
-#messages { flex: 1; overflow-y: auto; padding: 24px 0; background: #0a0a0a; }
+#messages { flex: 1; overflow-y: auto; padding: 24px 0; background: #0a0a0a; display: flex; flex-direction: column; align-items: center; }
 .msg { margin-bottom: 20px; max-width: 100%; animation: fadeIn .2s ease; }
 @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
 .msg.user { display: flex; justify-content: flex-end; }
@@ -65,7 +65,7 @@ body { display: flex; }
 #input-area { padding: 16px 28px; background: #101018; border-top: 1px solid #2a2a34; max-width: 900px; margin: 0 auto; width: 100%; box-sizing: border-box; }
 #input-box { color-scheme: dark; padding: 12px 16px; border: 1px solid #222226; border-radius: 10px; font-size: 14px; outline: none; width: 100%; transition: .15s; background: #060608; color: #c8c8d0; }
 #input-box::placeholder { color: #686878; }
-#input-box:focus { border-color: #39ff14; box-shadow: 0 0 0 3px rgba(57,255,20,.25); }
+#input-box:focus { border-color: #39ff14; box-shadow: 0 0 0 3px rgba(57,255,20,.2); }
 #send-btn { padding: 10px 22px; background: #1db700; color: #0a0a0a; font-weight: 700; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: .15s; }
 #send-btn:hover { background: #22cc00; box-shadow: 0 0 16px rgba(57,255,20,.5); }
 #send-btn:disabled { background: #1c1c22; cursor: default; box-shadow: none; color: #585860; }
@@ -111,6 +111,9 @@ body { display: flex; }
   <button id="new-session-btn">+ New Chat</button>
   <div id="activity-panel" style="padding:8px 12px 12px;border-top:1px solid #1a1a1c;font-size:11px;color:#787890">
     <div style="font-size:10px;font-weight:700;color:#5cff3e;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Activity</div>
+    <div style="font-size:10px;font-weight:700;color:#5cff3e;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Models</div>
+    <div id="model-status-list" style="margin-bottom:8px"></div>
+    <div style="font-size:10px;font-weight:700;color:#5cff3e;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Activity</div>
     <div id="activity-list" style="display:flex;flex-direction:column;gap:4px"></div>
   </div>
 </div>
@@ -133,15 +136,8 @@ body { display: flex; }
     <span id="header-activity" style="font-size:11px;color:#787890;margin-left:8px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
     <span id="header-balance" style="font-size:11px;color:#787890;margin-left:auto"></span>
   </div>
-  <div id="main-body" style="display:flex;flex:1;min-height:0">
-    <div id="messages"><div id="messages-inner" style="width:100%;max-width:900px;padding:0 28px;box-sizing:border-box;margin:0 auto"></div></div>
-    <div id="right-panel" style="width:200px;min-width:200px;background:#0c0c10;border-left:1px solid #1c1c24;padding:16px;overflow-y:auto;font-size:12px;color:#888898">
-    <div style="font-size:10px;font-weight:700;color:#5cff3e;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Models</div>
-    <div id="model-status-list"></div>
-  </div>
-  </div>
-</div>
-<div id="input-area">
+  <div id="messages"><div id="messages-inner" style="width:100%;max-width:900px;padding:0 28px;box-sizing:border-box"></div></div>
+  <div id="input-area">
     <form id="input-form">
       <div style="display:flex;flex-direction:column;flex:1;gap:4px">
         <div style="display:flex;gap:6px;align-items:center">
@@ -176,7 +172,6 @@ body { display: flex; }
       <button id="delete-confirm" style="padding:8px 16px;background:#dc2626;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">Delete</button>
     </div>
   </div>
-</div>
 </div>
 
 <!-- Approval modal -->
@@ -753,14 +748,13 @@ function updateModelPanel() {
   fetch('/api/models').then(r => r.json()).then(data => {
     if (!data || !data.models) return;
     panel.innerHTML = data.models.map(m => 
-      '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:11px">' +
-      '<span style="width:6px;height:6px;border-radius:50%;background:' + (m.status === 'configured' ? '#22c55e' : '#ef4444') + ';flex-shrink:0"></span>' +
-      '<span style="color:#b0b0b8">' + escapeHtml(m.name) + '</span>' +
-      '</div>'
+      '<div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#888898">' +
+      '<span style="width:5px;height:5px;border-radius:50%;background:' + (m.status === 'configured' ? '#22c55e' : '#ef4444') + ';flex-shrink:0"></span>' +
+      escapeHtml(m.name) + '</div>'
     ).join('');
   });
 }
-setInterval(updateModelPanel, 10000);
+setInterval(updateModelPanel, 15000);
 updateModelPanel();
 
 function refreshStats() {
