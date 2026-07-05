@@ -522,9 +522,7 @@ evtSource.addEventListener('error', e => {
 });
 evtSource.addEventListener('dispatch', e => {
   const data = JSON.parse(e.data);
-  const div = document.createElement('div'); div.className = 'msg system';
-  div.innerHTML = `<div class="bubble">${escapeHtml(data.text || '')}</div>`;
-  messagesEl.appendChild(div); scrollToBottom();
+  // Status shown in right panel only
 });
 // Reasoning (thinking) display
 let reasoningEl = null;
@@ -559,9 +557,7 @@ evtSource.addEventListener('status', e => {
     // Keep only last 10
     while (al.children.length > 10) al.lastChild.remove();
   }
-  const div = document.createElement('div'); div.className = 'msg system';
-  div.innerHTML = `<div class="bubble">${escapeHtml(data.text || '')}</div>`;
-  messagesEl.appendChild(div); scrollToBottom();
+  // Status shown in right panel only
 });
 evtSource.addEventListener('session_switched', () => loadSessionList());
 evtSource.addEventListener('model_switched', () => {
