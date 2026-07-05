@@ -46,7 +46,7 @@ body { display: flex; }
 .msg { margin-bottom: 20px; max-width: 100%; animation: fadeIn .2s ease; }
 @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
 .msg.user { display: flex; justify-content: flex-end; }
-.msg.user .bubble { background: linear-gradient(135deg, #1db700, #158800); color: #000; border-radius: 16px 16px 4px 16px; box-shadow: 0 0 16px rgba(57,255,20,.35); }
+.msg.user .bubble { background: #f0f0f0; color: #111; border-radius: 16px 16px 4px 16px; }
 .msg.model .bubble { background: #080808; color: #c8c8d0; border-radius: 16px 16px 16px 4px; border: 1px solid #151515; }
 .msg.system .bubble { background: #141410; color: #ca8a04; border-radius: 10px; text-align: center; font-size: 11px; border: 1px solid #2a2a14; }
 .msg.error .bubble { background: #16080e; color: #ef4444; border-radius: 10px; border: 1px solid #2a1414; }
@@ -130,7 +130,7 @@ body { display: flex; }
   </div>
   <div style="display:flex;flex:1;min-height:0">
       <div style="flex:1;display:flex;flex-direction:column;min-width:0">
-        <div id="messages"><div id="messages-inner" style="width:100%;max-width:960px;padding:0 24px;box-sizing:border-box"></div></div>
+        <div id="messages"><div id="messages-inner" style="width:100%;padding:0 28px;box-sizing:border-box"></div></div>
         <div id="input-area">
     <form id="input-form">
       <div style="display:flex;flex-direction:column;flex:1;gap:4px">
