@@ -65,6 +65,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("GET /api/system", s.handleGetSystem)
 	mux.HandleFunc("GET /api/yolo", s.handleGetYOLO)
 	mux.HandleFunc("PUT /api/yolo", s.handleSetYOLO)
+	mux.HandleFunc("POST /api/approve", s.handleApprove)
 	mux.HandleFunc("GET /api/git", s.handleGetGit)
 	mux.HandleFunc("POST /api/git/config", s.handleSetGitConfig)
 
@@ -201,6 +202,22 @@ func (s *Server) handleSetYOLO(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+
+func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ID       string `json:"id"`
+		Approved bool   `json:"approved"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if s.state.ResolveApproval(req.ID, req.Approved) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	http.Error(w, "approval not found", http.StatusNotFound)
+}
 
 func (s *Server) handleGetGit(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]interface{}{

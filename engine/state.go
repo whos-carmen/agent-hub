@@ -43,6 +43,9 @@ type ConversationState struct {
 	// YOLOMode: when true, auto-approve all tool calls including dangerous ones.
 	YOLOMode bool
 
+	// Approval system: pending tool approval requests (keyed by ID).
+	approvals map[string]chan bool
+
 	// persistPath is the filesystem path for session persistence.
 	persistPath string
 }
@@ -58,6 +61,7 @@ func NewPersistentState(path string) *ConversationState {
 		Broadcast:   make(chan models.StreamEvent, 256),
 		Input:       make(chan string, 32),
 		persistPath: path,
+		approvals:   make(map[string]chan bool),
 	}
 
 	// Try to load from disk
@@ -271,6 +275,27 @@ func (s *ConversationState) BroadcastEvent(evt models.StreamEvent) {
 	case s.Broadcast <- evt:
 	default:
 	}
+}
+
+// ─── Approval System ───────────────────────────────
+
+// RequestApproval creates a pending approval channel.
+func (s *ConversationState) RequestApproval(id, toolName string, args map[string]any) chan bool {
+	s.mu.Lock()
+	ch := make(chan bool, 1)
+	s.approvals[id] = ch
+	s.mu.Unlock()
+	return ch
+}
+
+// ResolveApproval resolves a pending approval.
+func (s *ConversationState) ResolveApproval(id string, approved bool) bool {
+	s.mu.Lock()
+	ch, ok := s.approvals[id]
+	if ok { delete(s.approvals, id) }
+	s.mu.Unlock()
+	if ok { ch <- approved; close(ch) }
+	return ok
 }
 
 // ─── Persistence ────────────────────────────────────

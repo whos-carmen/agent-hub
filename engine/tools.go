@@ -301,9 +301,9 @@ func (tr *ToolRegistry) OpenAIFormats() []models.Tool {
 	for _, td := range tr.tools {
 		desc := td.Description
 		if td.Dangerous {
-			desc = "🔴 DANGEROUS — requires YOLO mode to execute. " + desc
+			desc = "🔴 NEEDS YOLO —  " + desc
 		} else {
-			desc = "🟢 SAFE — always allowed. " + desc
+			desc = "🟢 AUTO-RUNS — no approval needed. " + desc
 		}
 		tools = append(tools, models.Tool{
 			Type: "function",
