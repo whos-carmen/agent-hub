@@ -35,11 +35,12 @@ type Message struct {
 
 // StreamEvent is pushed to UI subscribers as model responses arrive.
 type StreamEvent struct {
-	Type    string `json:"type"` // "chunk" | "status" | "done" | "error" | "dispatch"
-	Message Message `json:"message,omitempty"`
-	Chunk   string `json:"chunk,omitempty"`
-	Text    string `json:"text,omitempty"`
-	Error   string `json:"error,omitempty"`
+	Type      string     `json:"type"` // "chunk" | "status" | "done" | "error" | "dispatch" | "tool_calls" | "approval_needed"
+	Message   Message    `json:"message,omitempty"`
+	Chunk     string     `json:"chunk,omitempty"`
+	Text      string     `json:"text,omitempty"`
+	Error     string     `json:"error,omitempty"`
+	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
 }
 
 // DispatchPlan describes how the router decided to handle user input.
@@ -69,4 +70,37 @@ type ModelConfig struct {
 	Type       string // "deepseek" | "openai"
 	ModelName  string
 	EnvVarName string
+}
+
+// ─── Tool calling types ──────────────────────────
+
+// Tool represents an OpenAI-compatible tool definition.
+type Tool struct {
+	Type     string       `json:"type"` // "function"
+	Function ToolFunction `json:"function"`
+}
+
+// ToolFunction is the function descriptor inside a Tool.
+type ToolFunction struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Parameters  any    `json:"parameters,omitempty"`
+}
+
+// ToolCall represents a model's request to call a tool.
+type ToolCall struct {
+	ID       string              `json:"id"`
+	Type     string              `json:"type"` // "function"
+	Function ToolCallFunction    `json:"function"`
+}
+
+// ToolCallFunction holds the name and arguments of a tool call.
+type ToolCallFunction struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"` // JSON-encoded args
+}
+
+// ToolCallID is the tool_call_id field on a tool-role message.
+type ToolCallID struct {
+	ToolCallID string `json:"tool_call_id"`
 }
