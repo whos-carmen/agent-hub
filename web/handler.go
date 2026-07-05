@@ -308,10 +308,11 @@ func (s *Server) handleGetStats(w http.ResponseWriter, r *http.Request) {
 		} else { resp.CtxFmt = "0%" }
 	}
 	
-	// Cache hit %
 	if stats.TokensIn > 0 {
 		resp.CachePct = stats.CachedTokens * 100 / stats.TokensIn
 		resp.CacheFmt = fmt.Sprintf("%d%%", resp.CachePct)
+	} else {
+		resp.CacheFmt = "0%"
 	}
 	
 	w.Header().Set("Content-Type", "application/json")
