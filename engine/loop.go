@@ -90,22 +90,34 @@ func RunLoop(state *ConversationState, cfg config.Config) {
 				yolo := state.GetYOLO()
 				for _, tc := range toolCalls {
 					dangerous := tools.IsDangerous(tc.Function.Name)
+					var args map[string]any
+					json.Unmarshal([]byte(tc.Function.Arguments), &args)
+
 					if dangerous && !yolo {
+						approvalID := "approve-" + generateID()
+						ch := state.RequestApproval(approvalID, tc.Function.Name, args)
 						state.BroadcastEvent(models.StreamEvent{
-							Type: "status",
-							Text: "Blocked: " + tc.Function.Name + " requires approval (enable YOLO to run)",
+							Type: "approval_needed",
+							Text: approvalID,
+							Message: models.Message{
+								ModelName: tc.Function.Name,
+								Content:  tc.Function.Arguments,
+								ID:       approvalID,
+							},
 						})
-						msgs = append(msgs, models.ChatMessage{Role:"assistant", ToolCalls: []models.ToolCall{{ID:tc.ID, Type:"function", Function: models.ToolCallFunction{Name:tc.Function.Name, Arguments:tc.Function.Arguments}}}})
-						msgs = append(msgs, models.ChatMessage{Role:"tool", ToolCallID: tc.ID, Content: "Blocked: tool requires YOLO mode. Ask user to enable it."})
-						continue
+						slog.Info("waiting for approval", "tool", tc.Function.Name, "id", approvalID)
+						approved := <-ch
+						if !approved {
+							state.BroadcastEvent(models.StreamEvent{Type: "status", Text: "✗ Denied: " + tc.Function.Name})
+							msgs = append(msgs, models.ChatMessage{Role:"assistant", ToolCalls: []models.ToolCall{{ID:tc.ID, Type:"function", Function: models.ToolCallFunction{Name:tc.Function.Name, Arguments:tc.Function.Arguments}}}})
+							msgs = append(msgs, models.ChatMessage{Role:"tool", ToolCallID: tc.ID, Content: "User denied this tool call."})
+							continue
+						}
 					}
 					state.BroadcastEvent(models.StreamEvent{
 						Type: "status",
 						Text: "Running: " + tc.Function.Name,
 					})
-
-					var args map[string]any
-					json.Unmarshal([]byte(tc.Function.Arguments), &args)
 
 					result, execErr := tools.Execute(tc.Function.Name, args)
 					content := result

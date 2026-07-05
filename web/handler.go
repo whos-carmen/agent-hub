@@ -236,9 +236,69 @@ func (s *Server) handleCompact(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewDecoder(r.Body).Decode(&req)
 	if req.KeepTurns <= 0 { req.KeepTurns = 10 }
-	removed := s.state.CompactSession(req.KeepTurns)
+	
+	// Get messages to compact
+	activeID := s.state.GetActiveSessionID()
+	msgs := s.state.GetMessages(activeID)
+	if len(msgs) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]int{"removed": 0})
+		return
+	}
+	
+	// Find cutoff: keep last keepTurns user messages
+	userIdx := []int{}
+	for i, m := range msgs {
+		if m.Role == models.RoleUser { userIdx = append(userIdx, i) }
+	}
+	if len(userIdx) <= req.KeepTurns {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]int{"removed": 0})
+		return
+	}
+	cutoff := userIdx[len(userIdx)-req.KeepTurns]
+	oldMsgs := msgs[:cutoff]
+	
+	// Build summarization prompt
+	var sb strings.Builder
+	sb.WriteString("Summarize this conversation history concisely. Include key decisions, findings, and actions taken.\n\n")
+	for _, m := range oldMsgs {
+		role := m.Role
+		if role == models.RoleModel { role = "assistant" }
+		content := m.Content
+		if len(content) > 500 { content = content[:500] + "..." }
+		sb.WriteString(fmt.Sprintf("[%s]: %s\n", role, content))
+	}
+	
+	// Call default model for summarization
+	defaultModel := s.cfg.DefaultModel
+	mdef, ok := s.cfg.Models[defaultModel]
+	if !ok {
+		// Fall back to truncation
+		removed := s.state.CompactSession(req.KeepTurns)
+		json.NewEncoder(w).Encode(map[string]int{"removed": removed})
+		return
+	}
+	key := os.Getenv(mdef.APIKeyEnv)
+	if key == "" {
+		removed := s.state.CompactSession(req.KeepTurns)
+		json.NewEncoder(w).Encode(map[string]int{"removed": removed})
+		return
+	}
+	
+	mc := models.NewModelConfig(defaultModel, key, mdef.BaseURL, mdef.Type, mdef.ModelName, mdef.APIKeyEnv)
+	summary, err := models.CallModelNonStreaming(r.Context(), mc, "You summarize conversations. Be brief.", sb.String(), "")
+	if err != nil {
+		slog.Warn("compaction summary failed", "error", err)
+		removed := s.state.CompactSession(req.KeepTurns)
+		json.NewEncoder(w).Encode(map[string]int{"removed": removed})
+		return
+	}
+	
+	// Store summary as system message and keep recent messages
+	s.state.CompactWithSummary(cutoff, summary)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]int{"removed": removed})
+	json.NewEncoder(w).Encode(map[string]int{"removed": len(oldMsgs), "summarized": 1})
 }
 
 func (s *Server) handleGetBalance(w http.ResponseWriter, r *http.Request) {

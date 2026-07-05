@@ -301,7 +301,7 @@ func (tr *ToolRegistry) OpenAIFormats() []models.Tool {
 	for _, td := range tr.tools {
 		desc := td.Description
 		if td.Dangerous {
-			desc = "🔴 NEEDS YOLO —  " + desc
+			desc = "🔴 Asks permission —  " + desc
 		} else {
 			desc = "🟢 AUTO-RUNS — no approval needed. " + desc
 		}

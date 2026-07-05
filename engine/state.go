@@ -285,6 +285,23 @@ func (s *ConversationState) CompactSession(keepTurns int) int {
 	return len(userIndices) - keepTurns
 }
 
+func (s *ConversationState) CompactWithSummary(cutoff int, summary string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sess := s.getActiveSessionLocked()
+	if sess == nil { return }
+	// Keep messages after cutoff
+	recent := sess.Messages[cutoff:]
+	// Build new message list: summary first, then recent
+	sess.Messages = []models.Message{{
+		ID: generateID(), Role: models.RoleSystem,
+		Content: "[Compacted conversation summary]\n" + summary,
+		Status: models.StatusComplete,
+	}}
+	sess.Messages = append(sess.Messages, recent...)
+	s.maybeSaveLocked()
+}
+
 func (s *ConversationState) GetActiveSessionStats() SessionStats {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
