@@ -32,7 +32,7 @@ body { display: flex; }
 #new-session-btn:hover { border-color: #39ff14; color: #5cff3e; background: #0c0c12; }
 
 /* ── Main area ─────────────────────────────── */
-#main { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #0a0a0a; }
+#main { flex: 1; display: flex; flex-direction: column; background: #0a0a0a; }
 
 /* ── Header ────────────────────────────────── */
 #header { padding: 12px 24px; background: #0c0c10; border-bottom: 1px solid #1a1a1c; display: flex; align-items: center; gap: 12px; min-height: 52px; }
@@ -110,8 +110,6 @@ body { display: flex; }
   <button id="new-session-btn">+ New Chat</button>
   <div id="activity-panel" style="padding:8px 12px 12px;border-top:1px solid #1a1a1c;font-size:11px;color:#787890">
     <div style="font-size:10px;font-weight:700;color:#5cff3e;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Activity</div>
-    <div style="font-size:10px;font-weight:700;color:#5cff3e;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Models</div>
-    <div id="model-status-list" style="margin-bottom:8px"></div>
     <div style="font-size:10px;font-weight:700;color:#5cff3e;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Activity</div>
     <div id="activity-list" style="display:flex;flex-direction:column;gap:4px"></div>
   </div>
@@ -134,7 +132,13 @@ body { display: flex; }
     <span id="header-activity" style="font-size:11px;color:#787890;margin-left:8px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
     <span id="header-balance" style="font-size:11px;color:#787890;margin-left:auto"></span>
   </div>
-  <div id="messages"><div id="messages-inner" style="width:100%;max-width:900px;padding:0 28px;box-sizing:border-box"></div></div>
+  <div style="display:flex;flex:1;min-height:0">
+    <div id="messages"><div id="messages-inner" style="width:100%;max-width:900px;padding:0 28px;box-sizing:border-box"></div></div>
+    <div id="right-panel" style="width:180px;min-width:180px;background:#0c0c10;border-left:1px solid #1c1c24;padding:14px;overflow-y:auto;font-size:11px;color:#888898">
+      <div style="font-size:10px;font-weight:700;color:#5cff3e;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Models</div>
+      <div id="model-status-list"></div>
+    </div>
+  </div>
   <div id="input-area">
     <form id="input-form">
       <div style="display:flex;flex-direction:column;flex:1;gap:4px">
