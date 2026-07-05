@@ -44,7 +44,7 @@ func RunLoop(state *ConversationState, cfg config.Config) {
 		})
 
 		// Dispatch
-		Dispatch(plan, state, modelConfigs)
+		Dispatch(plan, state, modelConfigs, cfg.DefaultModel)
 	}
 }
 

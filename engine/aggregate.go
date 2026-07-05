@@ -10,7 +10,7 @@ import (
 
 // AggregateAndSynthesizes takes multiple model responses and asks the primary
 // model to synthesize them into a coherent response.
-func AggregateAndSynthesize(responses []models.Message, primaryCfg models.ModelConfig, dispatchID string, state *ConversationState) {
+func AggregateAndSynthesize(responses []models.Message, primaryCfg models.ModelConfig, dispatchID string, state *ConversationState, modelConfigs map[string]models.ModelConfig, defaultModel string) {
 	var sb strings.Builder
 	sb.WriteString("I received responses from multiple models on the same topic. Please synthesise them into a coherent response, highlighting consensus and disagreements:\n\n")
 
@@ -38,7 +38,7 @@ func AggregateAndSynthesize(responses []models.Message, primaryCfg models.ModelC
 		Text: fmt.Sprintf("● %s: Synthesising parallel responses...", primaryCfg.Name),
 	})
 
-	go models.StreamResponse(context.Background(), primaryCfg, "You are a synthesiser. Combine the following model responses into a clear, concise summary.", prompt, "", chunkChan)
+	go models.StreamResponse(context.Background(), primaryCfg, hubSystemPrompt(primaryCfg.Name, modelConfigs, defaultModel)+" You are a synthesiser. Combine the following model responses into a clear, concise summary.", prompt, "", chunkChan)
 
 	var fullText strings.Builder
 	for evt := range chunkChan {

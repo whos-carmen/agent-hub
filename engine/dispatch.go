@@ -13,7 +13,7 @@ import (
 )
 
 // Dispatch executes a dispatch plan and broadcasts results.
-func Dispatch(plan models.DispatchPlan, state *ConversationState, modelConfigs map[string]models.ModelConfig) {
+func Dispatch(plan models.DispatchPlan, state *ConversationState, modelConfigs map[string]models.ModelConfig, defaultModel string) {
 	dispatchID := generateID()
 
 	dispatch := models.Dispatch{
@@ -31,17 +31,17 @@ func Dispatch(plan models.DispatchPlan, state *ConversationState, modelConfigs m
 
 	switch plan.Kind {
 	case "single":
-		dispatchSingle(plan, dispatchID, state, modelConfigs)
+		dispatchSingle(plan, dispatchID, state, modelConfigs, defaultModel)
 	case "parallel":
-		dispatchParallel(plan, dispatchID, state, modelConfigs)
+		dispatchParallel(plan, dispatchID, state, modelConfigs, defaultModel)
 	case "discussion":
-		dispatchDiscussion(plan, dispatchID, state, modelConfigs)
+		dispatchDiscussion(plan, dispatchID, state, modelConfigs, defaultModel)
 	}
 
 	state.UpdateDispatchStatus(dispatchID, "complete")
 }
 
-func dispatchSingle(plan models.DispatchPlan, dispatchID string, state *ConversationState, modelConfigs map[string]models.ModelConfig) {
+func dispatchSingle(plan models.DispatchPlan, dispatchID string, state *ConversationState, modelConfigs map[string]models.ModelConfig, defaultModel string) {
 	if len(plan.Models) == 0 {
 		return
 	}
@@ -56,9 +56,11 @@ func dispatchSingle(plan models.DispatchPlan, dispatchID string, state *Conversa
 	chunkChan := make(chan models.StreamEvent, 64)
 	msgID := generateID()
 
+	sysPrompt := hubSystemPrompt(modelName, modelConfigs, defaultModel)
+
 	// No placeholder message — stream starts via broadcast, final message added on "done"
 
-	go models.StreamResponse(context.Background(), cfg, "", plan.Prompt, "", chunkChan)
+	go models.StreamResponse(context.Background(), cfg, sysPrompt, plan.Prompt, "", chunkChan)
 
 	for evt := range chunkChan {
 		switch evt.Type {
@@ -101,7 +103,7 @@ func dispatchSingle(plan models.DispatchPlan, dispatchID string, state *Conversa
 	}
 }
 
-func dispatchParallel(plan models.DispatchPlan, dispatchID string, state *ConversationState, modelConfigs map[string]models.ModelConfig) {
+func dispatchParallel(plan models.DispatchPlan, dispatchID string, state *ConversationState, modelConfigs map[string]models.ModelConfig, defaultModel string) {
 	var wg sync.WaitGroup
 	responses := make([]models.Message, 0, len(plan.Models))
 	var mu sync.Mutex
@@ -121,7 +123,7 @@ func dispatchParallel(plan models.DispatchPlan, dispatchID string, state *Conver
 			chunkChan := make(chan models.StreamEvent, 64)
 			msgID := generateID()
 
-			go models.StreamResponse(context.Background(), cfg, "", plan.Prompt, "", chunkChan)
+			go models.StreamResponse(context.Background(), cfg, hubSystemPrompt(name, modelConfigs, defaultModel), plan.Prompt, "", chunkChan)
 
 			var fullText strings.Builder
 			for evt := range chunkChan {
@@ -176,14 +178,14 @@ func dispatchParallel(plan models.DispatchPlan, dispatchID string, state *Conver
 	// Aggregate if needed — feed results back to the primary model
 	if plan.Aggregate && len(responses) > 0 {
 		if primaryCfg, ok := modelConfigs[plan.Models[0]]; ok {
-			AggregateAndSynthesize(responses, primaryCfg, dispatchID, state)
+			AggregateAndSynthesize(responses, primaryCfg, dispatchID, state, modelConfigs, defaultModel)
 		}
 	}
 }
 
-func dispatchDiscussion(plan models.DispatchPlan, dispatchID string, state *ConversationState, modelConfigs map[string]models.ModelConfig) {
+func dispatchDiscussion(plan models.DispatchPlan, dispatchID string, state *ConversationState, modelConfigs map[string]models.ModelConfig, defaultModel string) {
 	if len(plan.Models) < 2 {
-		dispatchSingle(plan, dispatchID, state, modelConfigs)
+		dispatchSingle(plan, dispatchID, state, modelConfigs, defaultModel)
 		return
 	}
 
@@ -205,7 +207,7 @@ func dispatchDiscussion(plan models.DispatchPlan, dispatchID string, state *Conv
 			chunkChan := make(chan models.StreamEvent, 64)
 			msgID := generateID()
 
-			go models.StreamResponse(context.Background(), cfg, "You are participating in a multi-model discussion. Respond to the current topic concisely.", currentPrompt, "", chunkChan)
+			go models.StreamResponse(context.Background(), cfg, hubSystemPrompt(modelName, modelConfigs, defaultModel)+" You are participating in a multi-model discussion. Respond concisely.", currentPrompt, "", chunkChan)
 
 			var reply strings.Builder
 			for evt := range chunkChan {
@@ -259,4 +261,27 @@ func newErrorMessage(err, modelName, dispatchID string) models.Message {
 		Status:     models.StatusError,
 		DispatchID: dispatchID,
 	}
+}
+
+// hubSystemPrompt builds a system prompt that tells the model about the hub.
+func hubSystemPrompt(modelName string, allModels map[string]models.ModelConfig, defaultModel string) string {
+	var modelList []string
+	for name := range allModels {
+		if name != modelName {
+			modelList = append(modelList, name)
+		}
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("You are %s, one of several AI models running in agent-hub — a multi-model conversation orchestrator.\n\n", modelName))
+	sb.WriteString("Other models available in this hub:\n")
+	for _, name := range modelList {
+		sb.WriteString(fmt.Sprintf("  - %s\n", name))
+	}
+	if defaultModel != "" && defaultModel != modelName {
+		sb.WriteString(fmt.Sprintf("\nThe default model (used for single-model queries) is %s.\n", defaultModel))
+	}
+	sb.WriteString("\nWhen responding, you can suggest delegating work to other models by prefixing with @parallel (for code review, security audits, testing) or @discuss (for debate, brainstorming). The hub will route accordingly.\n")
+	sb.WriteString("You are talking to a user through a web dashboard or CLI. Be concise and helpful.\n")
+	return sb.String()
 }

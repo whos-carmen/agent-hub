@@ -304,7 +304,7 @@ func runDiscuss(cfg config.Config, args []string) {
 		Rounds: cfg.Routing.DiscussRounds,
 	}
 
-	engine.Dispatch(plan, state, modelConfigs)
+	engine.Dispatch(plan, state, modelConfigs, cfg.DefaultModel)
 }
 
 func runModels(cfg config.Config) {
