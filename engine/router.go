@@ -57,8 +57,25 @@ func Route(input string, cfg config.Config, sessionModel string) models.Dispatch
 		}
 	}
 
-	// Default: single model (session override takes precedence)
+	// Default: single model — use implement_model for code tasks, review_model for review tasks
 	plan.Kind = "single"
 	plan.Models = []string{baseModel}
+	// If review keywords matched and we didn't dispatch parallel, suggest review model
+	if cfg.Routing.ReviewModel != "" {
+		for _, kw := range cfg.Routing.ParallelOn {
+			if strings.Contains(inputLower, kw) {
+				plan.Models = []string{cfg.Routing.ReviewModel}
+				break
+			}
+		}
+	}
+	if cfg.Routing.ImplementModel != "" {
+		for _, kw := range []string{"implement", "build", "write", "create", "add", "fix", "code"} {
+			if strings.Contains(inputLower, kw) {
+				plan.Models = []string{cfg.Routing.ImplementModel}
+				break
+			}
+		}
+	}
 	return plan
 }

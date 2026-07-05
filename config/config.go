@@ -27,11 +27,13 @@ func (m ModelDef) CostOut(tokens int) float64 {
 }
 
 type Routing struct {
-	ParallelOn     []string `toml:"parallel_on"`
-	DiscussOn      []string `toml:"discuss_on"`
-	DiscussRounds  int      `toml:"discuss_rounds"`
+	ParallelOn    []string `toml:"parallel_on"`
+	DiscussOn     []string `toml:"discuss_on"`
+	DiscussRounds int      `toml:"discuss_rounds"`
 	ParallelModels []string `toml:"parallel_models"`
 	DiscussModels  []string `toml:"discuss_models"`
+	ReviewModel   string   `toml:"review_model"`
+	ImplementModel string  `toml:"implement_model"`
 }
 
 type Config struct {
@@ -92,6 +94,8 @@ func Default() Config {
 			DiscussRounds:  3,
 			ParallelModels: []string{"deepseek-pro", "mimo-pro"},
 			DiscussModels:  []string{"deepseek-pro", "mimo-pro"},
+			ReviewModel:    "deepseek-pro",
+			ImplementModel: "mimo-pro",
 		},
 	}
 }
