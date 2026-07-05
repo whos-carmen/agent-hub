@@ -11,8 +11,17 @@ import (
 type Session struct {
 	ID        string           `json:"id"`
 	Name      string           `json:"name"`
+	Model     string           `json:"model,omitempty"`     // per-session model override
 	CreatedAt time.Time        `json:"created_at"`
 	Messages  []models.Message `json:"messages"`
+}
+
+// GetModel returns the session's model override, or the defaultModel if unset.
+func (s *Session) GetModel(defaultModel string) string {
+	if s.Model != "" {
+		return s.Model
+	}
+	return defaultModel
 }
 
 // ConversationState is the single source of truth for the hub.
@@ -146,6 +155,7 @@ func (s *ConversationState) GetSessions() []*Session {
 		out[i] = &Session{
 			ID:        sess.ID,
 			Name:      sess.Name,
+			Model:     sess.Model,
 			CreatedAt: sess.CreatedAt,
 			Messages:  nil, // don't include messages in listing
 		}
@@ -164,6 +174,29 @@ func (s *ConversationState) RenameSession(id, name string) bool {
 		}
 	}
 	return false
+}
+
+// SetSessionModel sets the model override for a session.
+func (s *ConversationState) SetSessionModel(id, model string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, sess := range s.Sessions {
+		if sess.ID == id {
+			sess.Model = model
+			return true
+		}
+	}
+	return false
+}
+
+// GetActiveSessionModel returns the active session's model, or defaultModel.
+func (s *ConversationState) GetActiveSessionModel(defaultModel string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if sess := s.getActiveSessionLocked(); sess != nil {
+		return sess.GetModel(defaultModel)
+	}
+	return defaultModel
 }
 
 // AddDispatch registers a new dispatch.

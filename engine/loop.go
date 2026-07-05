@@ -32,8 +32,9 @@ func RunLoop(state *ConversationState, cfg config.Config) {
 			Text: "Routing...",
 		})
 
-		// Route
-		plan := Route(input, cfg)
+		// Route — pass the active session's model override
+		sessionModel := state.GetActiveSessionModel(cfg.DefaultModel)
+		plan := Route(input, cfg, sessionModel)
 
 		slog.Info("routed", "kind", plan.Kind, "models", plan.Models)
 

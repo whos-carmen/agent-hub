@@ -95,7 +95,7 @@ func runServer(cfg config.Config) {
 	go engine.RunLoop(state, cfg)
 
 	// Start web server
-	srv := web.NewServer(state, cfg.Port)
+	srv := web.NewServer(state, cfg)
 	go srv.Broadcast()
 
 	slog.Info("web dashboard at", "url", fmt.Sprintf("http://localhost:%d", cfg.Port))

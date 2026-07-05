@@ -8,16 +8,23 @@ import (
 )
 
 // Route decides how to handle user input based on routing rules.
-func Route(input string, cfg config.Config) models.DispatchPlan {
+// sessionModel overrides the default model when set.
+func Route(input string, cfg config.Config, sessionModel string) models.DispatchPlan {
 	inputLower := strings.ToLower(input)
 	plan := models.DispatchPlan{
 		Prompt: input,
 	}
 
+	// Determine base model: session override > config default
+	baseModel := cfg.DefaultModel
+	if sessionModel != "" {
+		baseModel = sessionModel
+	}
+
 	// Check for manual overrides
 	if strings.Contains(inputLower, "@single") {
 		plan.Kind = "single"
-		plan.Models = []string{cfg.DefaultModel}
+		plan.Models = []string{baseModel}
 		plan.Prompt = strings.TrimSpace(strings.ReplaceAll(input, "@single", ""))
 		return plan
 	}
@@ -50,8 +57,8 @@ func Route(input string, cfg config.Config) models.DispatchPlan {
 		}
 	}
 
-	// Default: single model
+	// Default: single model (session override takes precedence)
 	plan.Kind = "single"
-	plan.Models = []string{cfg.DefaultModel}
+	plan.Models = []string{baseModel}
 	return plan
 }

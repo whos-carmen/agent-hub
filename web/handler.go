@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -16,6 +17,7 @@ import (
 
 	_ "embed"
 
+	"github.com/whos-carmen/agent-hub/config"
 	"github.com/whos-carmen/agent-hub/engine"
 	"github.com/whos-carmen/agent-hub/models"
 	"github.com/whos-carmen/agent-hub/repo"
@@ -28,14 +30,16 @@ type Server struct {
 	state   *engine.ConversationState
 	subs    *SSESubscriber
 	port    int
+	cfg     config.Config
 	server  *http.Server
 }
 
-func NewServer(state *engine.ConversationState, port int) *Server {
+func NewServer(state *engine.ConversationState, cfg config.Config) *Server {
 	return &Server{
 		state: state,
 		subs:  NewSSESubscriber(),
-		port:  port,
+		port:  cfg.Port,
+		cfg:   cfg,
 	}
 }
 
@@ -46,12 +50,14 @@ func (s *Server) Start() error {
 	mux.HandleFunc("GET /api/messages", s.handleGetMessages)
 	mux.HandleFunc("POST /api/send", s.handleSend)
 	mux.HandleFunc("GET /api/models", s.handleGetModels)
+	mux.HandleFunc("GET /api/files", s.handleGetFiles)
 	mux.HandleFunc("GET /api/stream", s.handleSSE)
 
 	mux.HandleFunc("GET /api/sessions", s.handleGetSessions)
 	mux.HandleFunc("POST /api/sessions", s.handleCreateSession)
 	mux.HandleFunc("DELETE /api/sessions/{id}", s.handleDeleteSession)
 	mux.HandleFunc("PUT /api/sessions/{id}", s.handleRenameSession)
+	mux.HandleFunc("PUT /api/sessions/{id}/model", s.handleSetSessionModel)
 	mux.HandleFunc("GET /api/sessions/{id}/messages", s.handleGetSessionMessages)
 
 	mux.HandleFunc("GET /api/system", s.handleGetSystem)
@@ -142,13 +148,19 @@ func (s *Server) handleGetModels(w http.ResponseWriter, r *http.Request) {
 		Name   string `json:"name"`
 		Status string `json:"status"`
 	}
-	models := []ModelInfo{
-		{Name: "mimo-pro", Status: "configured"},
-		{Name: "deepseek-pro", Status: "configured"},
-		{Name: "deepseek-flash", Status: "configured"},
+	var list []ModelInfo
+	for name, mdef := range s.cfg.Models {
+		status := "configured"
+		if mdef.ResolveAPIKey() == "" {
+			status = "missing key"
+		}
+		list = append(list, ModelInfo{Name: name, Status: status})
+	}
+	if list == nil {
+		list = []ModelInfo{}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(models)
+	json.NewEncoder(w).Encode(list)
 }
 
 func (s *Server) handleGetSystem(w http.ResponseWriter, r *http.Request) {
@@ -239,6 +251,59 @@ func (s *Server) handleRenameSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Error(w, "session not found", http.StatusNotFound)
+}
+
+func (s *Server) handleSetSessionModel(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var req struct {
+		Model string `json:"model"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+	if s.state.SetSessionModel(id, req.Model) {
+		s.subs.Send(models.StreamEvent{Type: "model_switched", Text: req.Model})
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	http.Error(w, "session not found", http.StatusNotFound)
+}
+
+func (s *Server) handleGetFiles(w http.ResponseWriter, r *http.Request) {
+	root := s.cfg.ProjectsDir
+	if root == "" {
+		root = "."
+	}
+
+	var files []map[string]interface{}
+	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil // skip inaccessible
+		}
+		if info.IsDir() {
+			if strings.HasPrefix(info.Name(), ".") && path != root {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if strings.HasPrefix(info.Name(), ".") {
+			return nil
+		}
+		rel, _ := filepath.Rel(root, path)
+		files = append(files, map[string]interface{}{
+			"name": rel,
+			"size": info.Size(),
+			"dir":  filepath.Dir(rel),
+		})
+		return nil
+	})
+
+	if files == nil {
+		files = []map[string]interface{}{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(files)
 }
 
 func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {

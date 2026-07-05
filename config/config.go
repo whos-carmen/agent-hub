@@ -28,12 +28,15 @@ type Config struct {
 	Port         int                 `toml:"port"`
 	Models       map[string]ModelDef `toml:"models"`
 	Routing      Routing             `toml:"routing"`
+	ProjectsDir  string              `toml:"projects_dir"`
 }
 
 func Default() Config {
+	homeDir, _ := os.UserHomeDir()
 	return Config{
 		DefaultModel: "mimo-pro",
 		Port:         8080,
+		ProjectsDir:  homeDir,
 		Models: map[string]ModelDef{
 			"mimo-pro": {
 				APIKeyEnv: "MIMO_API_KEY",

@@ -99,22 +99,43 @@ body { display: flex; background: #f0f2f5; color: #333; }
 <div id="main">
   <div id="header">
     <h1>agent-hub</h1>
+    <select id="model-select" style="font-size:12px;padding:3px 6px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#333;outline:none">
+      <option value="">(default)</option>
+    </select>
     <div id="model-dots"></div>
   </div>
   <div id="messages"></div>
   <div id="input-area">
     <form id="input-form">
       <div style="display:flex;flex-direction:column;flex:1;gap:4px">
-        <input id="input-box" type="text" placeholder="Type a message..." autofocus>
         <div style="display:flex;gap:6px;align-items:center">
-          <input id="file-input" type="text" placeholder="File paths (comma-separated)" style="flex:1;padding:4px 8px;border:1px solid #d1d5db;border-radius:4px;font-size:11px;color:#666;outline:none">
+          <input id="input-box" type="text" placeholder="Type a message..." autofocus style="flex:1;padding:10px 14px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;outline:none">
+          <button type="button" id="attach-btn" title="Attach files from projects directory" style="padding:8px 10px;background:#f3f4f6;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;font-size:14px">📎</button>
           <button id="send-btn" type="submit">Send</button>
         </div>
+        <div id="attached-files" style="display:flex;gap:4px;flex-wrap:wrap;min-height:0"></div>
       </div>
     </form>
     <div id="status-bar">
       <span class="stat" id="stat-models"></span>
       <span class="stat" id="stat-session"></span>
+    </div>
+  </div>
+</div>
+
+<!-- File browser modal -->
+<div id="file-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:300;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:8px;width:520px;max-width:90vw;max-height:80vh;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.2);display:flex;flex-direction:column">
+    <div style="padding:12px 16px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center">
+      <strong style="font-size:14px">Select files</strong>
+      <button id="file-modal-close" style="background:none;border:none;font-size:18px;cursor:pointer;color:#999">×</button>
+    </div>
+    <div id="file-list" style="flex:1;overflow-y:auto;padding:8px 12px;max-height:400px;font-size:13px">
+      <div style="padding:12px;text-align:center;color:#999">Loading files...</div>
+    </div>
+    <div style="padding:10px 16px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:8px">
+      <span id="file-count" style="flex:1;font-size:12px;color:#666;align-self:center"></span>
+      <button id="file-attach-btn" style="padding:6px 14px;background:#4a6fa5;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer">Attach</button>
     </div>
   </div>
 </div>
@@ -125,6 +146,7 @@ body { display: flex; background: #f0f2f5; color: #333; }
       <span id="settings-title">Settings</span>
       <span id="settings-tabs" style="font-size:12px;font-weight:400;margin-left:12px">
         <a href="#" class="stab active" data-tab="models">Models</a>
+        <a href="#" class="stab" data-tab="config">Config</a>
         <a href="#" class="stab" data-tab="system">System</a>
         <a href="#" class="stab" data-tab="git">Git</a>
       </span>
@@ -140,21 +162,31 @@ const messagesEl = document.getElementById('messages');
 const inputBox = document.getElementById('input-box');
 const inputForm = document.getElementById('input-form');
 const sendBtn = document.getElementById('send-btn');
+const attachBtn = document.getElementById('attach-btn');
+const attachedFilesEl = document.getElementById('attached-files');
 const sessionList = document.getElementById('session-list');
 const newSessionBtn = document.getElementById('new-session-btn');
+const modelSelect = document.getElementById('model-select');
 const modelDots = document.getElementById('model-dots');
 const settingsGear = document.getElementById('settings-gear');
 const settingsOverlay = document.getElementById('settings-overlay');
 const settingsClose = document.getElementById('settings-close');
 const settingsBody = document.getElementById('settings-body');
 
+const fileModal = document.getElementById('file-modal-overlay');
+const fileList = document.getElementById('file-list');
+const fileCount = document.getElementById('file-count');
+const fileAttachBtn = document.getElementById('file-attach-btn');
+const fileModalClose = document.getElementById('file-modal-close');
+
 let sessions = [];
 let activeSessionId = null;
 let streamingModel = null;
+let selectedFiles = [];
+let allFiles = [];
 
 // ─── API helpers ────────────────────────────────────────
 function escapeHtml(t) { if (!t) return ''; const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
-
 function fetchJSON(url, opts) { return fetch(url, opts).then(r => r.ok ? r.json().catch(() => null) : null); }
 
 function loadSessionList() {
@@ -164,6 +196,9 @@ function loadSessionList() {
     activeSessionId = data.active;
     renderSessionList();
     loadMessages();
+    // Restore model select for active session
+    const s = sessions.find(x => x.id === activeSessionId);
+    modelSelect.value = s?.model || '';
   });
 }
 
@@ -181,12 +216,14 @@ function loadMessages() {
 function switchSession(id) {
   if (id === activeSessionId) return;
   activeSessionId = id;
+  selectedFiles = [];
+  renderAttachedFiles();
   loadMessages();
   renderSessionList();
 }
 
 function createSession(name) {
-  fetchJSON('/api/sessions', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name: name || ''}) }).then(s => {
+  fetchJSON('/api/sessions', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name: name || '') }).then(s => {
     if (!s) return;
     activeSessionId = s.id;
     loadSessionList();
@@ -203,6 +240,93 @@ function renameSession(id, name, cb) {
     .then(r => { if (cb) cb(r.ok); });
 }
 
+// ─── Model selector ─────────────────────────────────────
+modelSelect.addEventListener('change', () => {
+  if (!activeSessionId) return;
+  const model = modelSelect.value;
+  fetch('/api/sessions/' + encodeURIComponent(activeSessionId) + '/model', {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({model})
+  });
+});
+
+function populateModelSelect(models) {
+  const current = modelSelect.value;
+  modelSelect.innerHTML = '<option value="">(default)</option>';
+  models.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.name;
+    opt.textContent = m.name;
+    if (m.status !== 'configured') opt.style.color = '#999';
+    modelSelect.appendChild(opt);
+  });
+  modelSelect.value = current;
+}
+
+// ─── File browser ───────────────────────────────────────
+function openFileBrowser() {
+  fileModal.style.display = 'flex';
+  fileList.innerHTML = '<div style="padding:12px;text-align:center;color:#999">Loading files...</div>';
+  fetchJSON('/api/files').then(files => {
+    allFiles = files || [];
+    renderFileList();
+  });
+}
+
+function renderFileList() {
+  if (!allFiles.length) {
+    fileList.innerHTML = '<div style="padding:12px;text-align:center;color:#999">No files found in projects directory</div>';
+    fileCount.textContent = '';
+    return;
+  }
+  fileList.innerHTML = '';
+  let checked = 0;
+  allFiles.forEach(f => {
+    const isSelected = selectedFiles.includes(f.name);
+    if (isSelected) checked++;
+    const row = document.createElement('label');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:3px;cursor:pointer';
+    row.innerHTML = '<input type="checkbox" class="file-cb" value="' + escapeHtml(f.name) + '"' + (isSelected ? ' checked' : '') + ' style="flex-shrink:0">' +
+      '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">' + escapeHtml(f.name) + '</span>' +
+      '<span style="font-size:11px;color:#999">' + (f.size > 1024 ? Math.round(f.size/1024) + 'KB' : f.size + 'B') + '</span>';
+    fileList.appendChild(row);
+  });
+  fileCount.textContent = checked + ' selected';
+}
+
+fileList.addEventListener('change', e => {
+  if (e.target.classList.contains('file-cb')) {
+    const checked = fileList.querySelectorAll('.file-cb:checked').length;
+    fileCount.textContent = checked + ' selected';
+  }
+});
+
+fileAttachBtn.addEventListener('click', () => {
+  selectedFiles = [];
+  fileList.querySelectorAll('.file-cb:checked').forEach(cb => selectedFiles.push(cb.value));
+  fileModal.style.display = 'none';
+  renderAttachedFiles();
+});
+
+fileModalClose.addEventListener('click', () => { fileModal.style.display = 'none'; });
+fileModal.addEventListener('click', e => { if (e.target === fileModal) fileModal.style.display = 'none'; });
+attachBtn.addEventListener('click', openFileBrowser);
+
+function renderAttachedFiles() {
+  attachedFilesEl.innerHTML = '';
+  selectedFiles.forEach(path => {
+    const tag = document.createElement('span');
+    tag.style.cssText = 'display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:#e8f0fe;border-radius:10px;font-size:11px;color:#1a56db';
+    tag.innerHTML = escapeHtml(path.split('/').pop()) + ' <button style="background:none;border:none;cursor:pointer;padding:0;font-size:13px;color:#999" data-path="' + escapeHtml(path) + '">×</button>';
+    tag.querySelector('button').addEventListener('click', () => {
+      selectedFiles = selectedFiles.filter(p => p !== path);
+      renderAttachedFiles();
+    });
+    attachedFilesEl.appendChild(tag);
+  });
+}
+
 // ─── Render ─────────────────────────────────────────────
 
 function renderSessionList() {
@@ -212,21 +336,18 @@ function renderSessionList() {
     div.className = 'session-item' + (s.id === activeSessionId ? ' active' : '');
     div.innerHTML = `<span class="name" data-id="${s.id}">${escapeHtml(s.name)}</span><button class="del" data-id="${s.id}">×</button>`;
     
-    // Click to switch
     const nameSpan = div.querySelector('.name');
     nameSpan.addEventListener('click', () => {
-      if (nameSpan.contentEditable === 'true') return; // editing
+      if (nameSpan.contentEditable === 'true') return;
       switchSession(s.id);
     });
     
-    // Double-click to rename inline
     nameSpan.addEventListener('dblclick', function(e) {
       e.stopPropagation();
       if (this.contentEditable === 'true') return;
       this.contentEditable = 'true';
       this.classList.add('editing');
       this.focus();
-      // Select all text
       const range = document.createRange();
       range.selectNodeContents(this);
       const sel = window.getSelection();
@@ -234,12 +355,8 @@ function renderSessionList() {
       sel.addRange(range);
     });
     
-    // Save on Enter or blur
     nameSpan.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        this.blur();
-      }
+      if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
       if (e.key === 'Escape') {
         this.textContent = sessions.find(se => se.id === s.id)?.name || this.textContent;
         this.blur();
@@ -251,11 +368,8 @@ function renderSessionList() {
       this.contentEditable = 'false';
       this.classList.remove('editing');
       const newName = this.textContent.trim();
-      if (newName && newName !== s.name) {
-        renameSession(s.id, newName);
-      } else {
-        this.textContent = s.name;
-      }
+      if (newName && newName !== s.name) renameSession(s.id, newName);
+      else this.textContent = s.name;
     });
 
     div.querySelector('.del').addEventListener('click', e => { e.stopPropagation(); deleteSession(s.id); });
@@ -377,6 +491,7 @@ evtSource.addEventListener('status', e => {
   messagesEl.appendChild(div); scrollToBottom();
 });
 evtSource.addEventListener('session_switched', () => loadSessionList());
+evtSource.addEventListener('model_switched', () => loadSessionList());
 evtSource.addEventListener('connected', () => {});
 evtSource.onerror = function() {
   let b = document.getElementById('sse-banner');
@@ -388,12 +503,7 @@ inputForm.addEventListener('submit', e => {
   e.preventDefault();
   const content = inputBox.value.trim();
   if (!content || sendBtn.disabled) return;
-
-  const fileInput = document.getElementById('file-input');
-  const filePaths = fileInput ? fileInput.value.trim() : '';
-
   inputBox.value = '';
-  if (fileInput) fileInput.value = '';
   sendBtn.disabled = true;
 
   const div = document.createElement('div'); div.className = 'msg user';
@@ -401,8 +511,8 @@ inputForm.addEventListener('submit', e => {
   messagesEl.appendChild(div); scrollToBottom();
 
   const body = { content };
-  if (filePaths) {
-    body.file_paths = filePaths.split(',').map(p => p.trim()).filter(p => p);
+  if (selectedFiles.length > 0) {
+    body.file_paths = [...selectedFiles];
   }
 
   fetch('/api/send', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
@@ -430,6 +540,7 @@ function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.stab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   if (tab === 'models') renderModelsTab();
+  else if (tab === 'config') renderConfigTab();
   else if (tab === 'system') renderSystemTab();
   else if (tab === 'git') renderGitTab();
 }
@@ -440,8 +551,23 @@ function renderModelsTab() {
     if (!models) { settingsBody.innerHTML = '<div class="row"><span class="label">Error loading models</span></div>'; return; }
     let html = '';
     models.forEach(m => { html += '<div class="row"><span class="label">' + escapeHtml(m.name) + '</span><span class="value">' + escapeHtml(m.status) + '</span></div>'; });
-    html += '<div style="margin-top:12px;font-size:11px;color:#999">Double-click a chat name to rename it.</div>';
+    html += '<div style="margin-top:12px;font-size:11px;color:#999">Set API keys via environment variables in the shell that runs hub.</div>';
     settingsBody.innerHTML = html;
+  });
+}
+
+function renderConfigTab() {
+  settingsBody.innerHTML = '<div class="row"><span class="label">Loading...</span></div>';
+  fetchJSON('/api/system').then(sys => {
+    fetchJSON('/api/models').then(models => {
+      settingsBody.innerHTML = '';
+      addSettingRow('Projects dir', '~ (home)');
+      addSettingRow('Default model', models?.find(m => m.name === 'mimo-pro')?.name || 'mimo-pro');
+      addSettingRow('API keys', (models || []).filter(m => m.status === 'configured').length + '/' + (models || []).length + ' configured');
+      addSettingRow('Host', sys?.hostname || '—');
+      addSettingRow('Port', '8080');
+      settingsBody.innerHTML += '<div style="margin-top:12px;font-size:11px;color:#999">Edit ~/.hub/config.toml to change these settings.</div>';
+    });
   });
 }
 
@@ -502,8 +628,9 @@ newSessionBtn.addEventListener('click', () => createSession(''));
 
 fetch('/api/models').then(r => r.json()).then(models => {
   if (models) {
-    modelDots.innerHTML = models.map(m => `<span class="model-indicator"><span class="model-dot"></span>${escapeHtml(m.name)}</span>`).join('');
+    modelDots.innerHTML = models.map(m => `<span class="model-indicator"><span class="model-dot ${m.status === 'configured' ? '' : 'offline'}"></span>${escapeHtml(m.name)}</span>`).join('');
     document.getElementById('stat-models').innerHTML = models.length + ' models';
+    populateModelSelect(models);
   }
 });
 
