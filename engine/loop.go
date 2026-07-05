@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -119,7 +120,7 @@ func RunLoop(state *ConversationState, cfg config.Config) {
 					}
 					state.BroadcastEvent(models.StreamEvent{
 						Type: "status",
-						Text: "Running: " + tc.Function.Name,
+						Text: "▶ " + tc.Function.Name + ": " + argSummary(tc.Function.Arguments),
 					})
 
 					result, execErr := tools.Execute(tc.Function.Name, args)
@@ -161,7 +162,7 @@ func RunLoop(state *ConversationState, cfg config.Config) {
 
 				fullText.Reset()
 				toolCalls = nil
-				state.BroadcastEvent(models.StreamEvent{Type: "status", Text: "Continuing..."})
+				state.BroadcastEvent(models.StreamEvent{Type: "status", Text: "…"})
 				continue
 			}
 
@@ -218,4 +219,21 @@ func buildModelConfigs(cfg config.Config) map[string]models.ModelConfig {
 		mc[name] = models.NewModelConfig(name, apiKey, mdef.BaseURL, mdef.Type, mdef.ModelName, mdef.APIKeyEnv)
 	}
 	return mc
+}
+
+func argSummary(argsJSON string) string {
+	var m map[string]any
+	if json.Unmarshal([]byte(argsJSON), &m) != nil { return argsJSON }
+	var parts []string
+	for k, v := range m {
+		s := fmt.Sprintf("%v", v)
+		if len(s) > 60 { s = s[:60] + "..." }
+		parts = append(parts, k + "=" + s)
+	}
+	return strings.Join(parts, ", ")
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n { return s }
+	return s[:n] + "..."
 }
