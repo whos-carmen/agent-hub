@@ -153,9 +153,9 @@ body { display: flex; }
 </div>
     <div id="right-panel" style="width:170px;min-width:170px;background:#050505;border-left:1px solid #151515;padding:14px;overflow-y:auto;font-size:11px">
       <div style="font-size:10px;font-weight:700;color:#5cff3e;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Models</div>
-      <div id="model-status-list" style="margin-bottom:12px"></div>
+      <div id="model-status-list" style="margin-bottom:14px;font-size:11px"></div>
       <div style="font-size:10px;font-weight:700;color:#5cff3e;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Activity</div>
-      <div id="activity-list" style="display:flex;flex-direction:column;gap:4px"></div>
+      <div id="activity-list" style="display:flex;flex-direction:column;gap:6px;font-size:11px;line-height:1.4"></div>
     </div>
   </div>
 
@@ -534,7 +534,7 @@ evtSource.addEventListener('reasoning', e => {
   if (!reasoningEl) {
     reasoningEl = document.createElement('div');
     reasoningEl.className = 'msg system';
-    reasoningEl.innerHTML = '<details open><summary style="cursor:pointer;font-size:11px;color:#787890">Thinking...</summary><div class="bubble" style="font-size:12px;color:#888898;max-height:200px;overflow-y:auto" id="reasoning-text"></div></details>';
+    reasoningEl.innerHTML = '<details style="margin-bottom:12px"><summary style="cursor:pointer;font-size:12px;color:#5cff3e;font-weight:500">Thinking...</summary><div class="bubble" style="font-size:12px;color:#888898;max-height:200px;overflow-y:auto" id="reasoning-text"></div></details>';
     messagesEl.appendChild(reasoningEl);
   }
   const textEl = document.getElementById('reasoning-text');
