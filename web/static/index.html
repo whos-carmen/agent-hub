@@ -359,7 +359,7 @@ function renderSessionList() {
   sessions.forEach(s => {
     const div = document.createElement('div');
     div.className = 'session-item' + (s.id === activeSessionId ? ' active' : '');
-    div.innerHTML = `<span class="name" data-id="${s.id}">${escapeHtml(s.name)}</span><button class="del" data-id="${s.id}">×</button>`;
+    div.innerHTML = `<span class="name" data-id="${s.id}" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</span><button class="del" data-id="${s.id}">×</button>`;
     
     const nameSpan = div.querySelector('.name');
     nameSpan.addEventListener('click', () => {
