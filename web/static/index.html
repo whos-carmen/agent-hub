@@ -223,7 +223,7 @@ function switchSession(id) {
 }
 
 function createSession(name) {
-  fetchJSON('/api/sessions', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name: name || '') }).then(s => {
+  fetchJSON('/api/sessions', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name: name || ''}) }).then(s => {
     if (!s) return;
     activeSessionId = s.id;
     loadSessionList();
