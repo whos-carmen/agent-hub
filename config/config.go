@@ -72,8 +72,8 @@ func Default() Config {
 				BaseURL:   "https://api.deepseek.com/v1/chat/completions",
 				Type:      "deepseek",
 				ModelName: "deepseek-chat",
-				PriceIn:   0.55,
-				PriceOut:  2.19,
+				PriceIn:   0.435,
+				PriceOut:  0.87,
 				Context:   1000000,
 			},
 			"deepseek-flash": {
