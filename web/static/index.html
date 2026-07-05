@@ -705,20 +705,18 @@ function renderGitTab() {
     settingsBody.innerHTML = '';
     addSettingRow('Git user', git.user_name || '(not set)');
     addSettingRow('Git email', git.user_email || '(not set)');
-    addSettingRow('GitHub CLI', git.gh_auth || '—');
-    settingsBody.innerHTML += `
-      <div style="margin-top:12px">
-        <div class="git-status">Update git config:</div>
-        <div class="git-form">
-          <input id="git-name" placeholder="Name" value="${escapeHtml(git.user_name || '')}">
-          <input id="git-email" placeholder="Email" value="${escapeHtml(git.user_email || '')}">
-          <button onclick="saveGitConfig()">Save</button>
-          
-        </div>
-      </div>`;
+    addSettingRow('GitHub CLI', git.gh_auth || '\u2014');
+    settingsBody.innerHTML += '<div style="margin-top:20px;padding-top:16px;border-top:1px solid #151515">' +
+      '<div style="font-size:11px;font-weight:600;color:#5cff3e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px">Update</div>' +
+      '<div style="margin-bottom:10px"><div style="font-size:11px;color:#787890;margin-bottom:4px">Name</div>' +
+      '<input id="git-name" placeholder="Your name" value="' + escapeHtml(git.user_name || '') + '" style="width:100%;padding:10px 12px;border:1px solid #1a1a1a;border-radius:8px;font-size:13px;background:#020202;color:#c8c8d0;outline:none;box-sizing:border-box"></div>' +
+      '<div style="margin-bottom:14px"><div style="font-size:11px;color:#787890;margin-bottom:4px">Email</div>' +
+      '<input id="git-email" placeholder="your@email.com" value="' + escapeHtml(git.user_email || '') + '" style="width:100%;padding:10px 12px;border:1px solid #1a1a1a;border-radius:8px;font-size:13px;background:#020202;color:#c8c8d0;outline:none;box-sizing:border-box"></div>' +
+      '<div style="display:flex;align-items:center;gap:10px">' +
+      '<button onclick="saveGitConfig()" style="padding:8px 18px;background:#1db700;color:#000;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">Save</button>' +
+      '<span id="git-saved" style="display:none;font-size:12px;color:#22c55e">&#x2713; Saved</span></div></div>';
   });
 }
-
 function saveGitConfig() {
   const name = document.getElementById('git-name').value.trim();
   const email = document.getElementById('git-email').value.trim();
