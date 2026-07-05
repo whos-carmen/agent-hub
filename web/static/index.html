@@ -137,6 +137,7 @@ body { display: flex; }
         <div style="display:flex;gap:6px;align-items:center">
           <input id="input-box" type="text" placeholder="Type a message..." autofocus autocomplete="off" style="flex:1;padding:10px 14px;border:1px solid #111;border-radius:6px;font-size:14px;outline:none">
           <button id="send-btn" type="submit">Send</button>
+          <button id="stop-btn" type="button" title="Stop current model" style="display:none;padding:10px 14px;background:#333;color:#c8c8d0;border:1px solid #444;border-radius:10px;font-size:13px;cursor:pointer">✕</button>
         </div>
         
       </div>
@@ -507,10 +508,14 @@ function scrollToBottom() { document.getElementById('messages').scrollTop = docu
 // ─── SSE ────────────────────────────────────────────────
 const evtSource = new EventSource('/api/stream');
 evtSource.addEventListener('chunk', e => {
+  document.getElementById('stop-btn').style.display = 'inline-block';
+  sendBtn.disabled = true;
   const data = JSON.parse(e.data);
   addStreamingChunk(data.message?.model_name || data.message?.modelName || 'model', data.chunk || '');
 });
 evtSource.addEventListener('done', e => {
+  document.getElementById('stop-btn').style.display = 'none';
+  sendBtn.disabled = false;
   const data = JSON.parse(e.data);
   finalizeModel(data.message || {});
 });
@@ -607,6 +612,11 @@ evtSource.onerror = function() {
 };
 
 // ─── Input ──────────────────────────────────────────────
+document.getElementById('stop-btn').addEventListener('click', () => {
+  // Reload page to abort current SSE connection
+  location.reload();
+});
+
 inputForm.addEventListener('submit', e => {
   e.preventDefault();
   const content = inputBox.value.trim();

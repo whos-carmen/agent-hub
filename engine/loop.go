@@ -162,7 +162,7 @@ func RunLoop(state *ConversationState, cfg config.Config) {
 
 				fullText.Reset()
 				toolCalls = nil
-				state.BroadcastEvent(models.StreamEvent{Type: "status", Text: "…"})
+				state.BroadcastEvent(models.StreamEvent{Type: "status", Text: "Processing…"})
 				continue
 			}
 
