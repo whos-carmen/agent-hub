@@ -76,6 +76,7 @@ func RunLoop(state *ConversationState, cfg config.Config) {
 						// Drain remaining events
 						go func() { for range chunkChan {} }()
 					case "done":
+						state.RecordUsage(evt.TokensIn, evt.TokensOut, evt.CachedTokens)
 						if fullText.Len() == 0 && evt.Text != "" {
 							fullText.WriteString(evt.Text)
 						}

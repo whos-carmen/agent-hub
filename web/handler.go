@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -204,6 +205,7 @@ func (s *Server) handleGetModels(w http.ResponseWriter, r *http.Request) {
 		}
 		list = append(list, ModelInfo{Name: name, Status: status})
 	}
+	sort.Slice(list, func(i, j int) bool { return list[i].Name < list[j].Name })
 	if list == nil {
 		list = []ModelInfo{}
 	}
